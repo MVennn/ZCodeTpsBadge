@@ -6,7 +6,7 @@
 //   3. %LOCALAPPDATA%\Programs\ZCode\resources
 //
 // config.local.json example:
-//   { "zcodeResources": "D:/Apps/ZCode/resources", "zcodeExe": "D:/Apps/ZCode/ZCode.exe" }
+//   { "zcodeResources": "C:/Users/You/AppData/Local/Programs/ZCode/resources", "zcodeExe": "C:/Users/You/AppData/Local/Programs/ZCode/ZCode.exe" }
 
 import fs from 'node:fs';
 import path from 'node:path';

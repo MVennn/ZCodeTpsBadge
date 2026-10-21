@@ -28,8 +28,8 @@
 
 ```json
 {
-  "zcodeResources": "D:/Apps/ZCode/resources",
-  "zcodeExe": "D:/Apps/ZCode/ZCode.exe"
+  "zcodeResources": "C:/Users/You/AppData/Local/Programs/ZCode/resources",
+  "zcodeExe": "C:/Users/You/AppData/Local/Programs/ZCode/ZCode.exe"
 }
 ```
 
