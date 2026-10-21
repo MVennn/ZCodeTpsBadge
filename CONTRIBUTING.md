@@ -77,7 +77,6 @@ npm run assets             # 重新生成 logo / icon.ico / 社交预览
 
 - 图标矢量源：`assets/icon.svg`；
 - 栅格资源：`python tools/make_social_preview.py --ico`（需要 Pillow 与 numpy）；
-- 效果截图：`assets/screenshot-dark.png`，界面改动后手工替换。
 
 ## 不做什么
 

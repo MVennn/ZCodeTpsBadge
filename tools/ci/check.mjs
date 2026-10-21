@@ -54,7 +54,6 @@ const required = [
   'assets/logo.png',
   'assets/icon.ico',
   'assets/social-preview.png',
-  'assets/screenshot-dark.png',
   'docs/README.md',
   'docs/ARCHITECTURE.md',
   'docs/DESIGN.md',

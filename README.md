@@ -48,8 +48,6 @@ ZCode 正在运行又不想退出时加 `--force`，补丁会立即写入，但�
 
 ## 效果
 
-<img src="https://raw.githubusercontent.com/MVennn/ZCodeTpsBadge/main/assets/screenshot-dark.png" width="760" alt="ZCode Tok/s Badge 效果">
-
 - 流式输出时显示 `42.1 tok/s`（超过 100 取整），停下来约 1.8 秒后变回 `— tok/s`
 - 徽标固定在输入框工具条里、用量左侧，窗口变窄时自动收缩；深浅主题都适配
 - 只统计聊天区里增长的文本，输入框、侧边栏、用户消息、终端不计入

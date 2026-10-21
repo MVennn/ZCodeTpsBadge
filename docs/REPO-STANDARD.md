@@ -30,8 +30,7 @@ ZCodeTpsBadge/
 │   ├── icon.svg                 # 矢量源（改图标先改它）
 │   ├── logo.png                 # 512×512，README 顶部 logo
 │   ├── icon.ico                 # 16 / 24 / 32 / 48 / 64 / 128 / 256
-│   ├── social-preview.png       # 1280×640，GitHub 社交预览
-│   └── screenshot-dark.png      # 效果截图
+│   └── social-preview.png       # 1280×640，GitHub 社交预览
 ├── docs/                        # 文档正本（索引见 docs/README.md）
 │   └── release-notes/           # 面向用户的版本说明
 ├── src/                         # 运行时源码
@@ -100,7 +99,6 @@ ZCodeTpsBadge/
 | `logo.png` | 512×512，圆角透明 | README 顶部 logo |
 | `icon.ico` | 16 / 24 / 32 / 48 / 64 / 128 / 256 | Windows 图标 |
 | `social-preview.png` | 1280×640 | GitHub 社交预览 |
-| `screenshot-dark.png` | 实际界面截图 | README 效果图 |
 
 品牌色对齐 GoldSunEnhance：
 
