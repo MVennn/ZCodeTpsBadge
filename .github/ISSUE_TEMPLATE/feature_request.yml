@@ -1,0 +1,44 @@
+name: 功能建议
+description: 想要新的显示项、统计方式或交互
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        先说场景再说想法：在什么页面、现在哪里不顺手、希望变成什么样。
+        场景越具体，越容易判断该不该做、怎么做。
+
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 什么场景不顺手
+      description: 描述当前的操作路径和痛点。
+      placeholder: |
+        例：长回复时我想知道这次输出的峰值速度，
+        现在只能盯着徽标看，错过了就没了。
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的效果
+      description: 你希望看到什么、怎么交互。有草图或参考更好。
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 备选方案
+      description: 有没有别的实现方式，或者你试过的替代做法。
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: 范围确认
+      options:
+        - label: 这个建议只涉及界面显示 / 统计 / 交互，不涉及修改模型请求或读取对话内容。
+          required: true

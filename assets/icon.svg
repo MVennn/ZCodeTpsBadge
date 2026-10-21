@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="512" height="512" role="img" aria-label="ZCode Tok/s Badge">
+  <defs>
+    <linearGradient id="bg" gradientUnits="userSpaceOnUse" x1="54" y1="0" x2="54" y2="108">
+      <stop offset="0" stop-color="#2B3242"/>
+      <stop offset="1" stop-color="#161A22"/>
+    </linearGradient>
+    <linearGradient id="accent" gradientUnits="userSpaceOnUse" x1="18" y1="54" x2="90" y2="54">
+      <stop offset="0" stop-color="#FFC24A"/>
+      <stop offset="1" stop-color="#FF7A00"/>
+    </linearGradient>
+  </defs>
+  <rect width="108" height="108" rx="24" fill="url(#bg)"/>
+  <circle cx="54" cy="54" r="40" fill="none" stroke="url(#accent)" stroke-opacity=".28" stroke-width="2"/>
+  <rect x="16" y="39" width="76" height="30" rx="15" fill="#252B38" stroke="#FFFFFF" stroke-opacity=".14"/>
+  <circle cx="29" cy="54" r="4" fill="url(#accent)"/>
+  <text x="38" y="59" font-family="Segoe UI, system-ui, sans-serif" font-size="15" font-weight="700" fill="#F2F2F5">42</text>
+  <text x="60" y="59" font-family="Segoe UI, system-ui, sans-serif" font-size="9.5" font-weight="500" fill="#A7ADB8">tok/s</text>
+</svg>

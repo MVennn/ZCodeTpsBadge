@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用与排错文档
+    url: https://github.com/MVennn/ZCodeTpsBadge/blob/main/docs/TROUBLESHOOTING.md
+    about: 先看排错手册，很多问题这里已有答案。
+  - name: 安装与构建
+    url: https://github.com/MVennn/ZCodeTpsBadge/blob/main/docs/BUILD.md
+    about: 路径配置、打补丁、验证命令都在这里。

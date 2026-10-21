@@ -1,0 +1,19 @@
+{
+  "name": "zcode-tps-badge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capsule tok/s badge for the ZCode desktop app.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "patch": "node src/patch.mjs --apply",
+    "patch:force": "node src/patch.mjs --apply --force",
+    "restore": "node src/restore.mjs",
+    "preview": "node tools/preview/build.mjs && node tools/preview/serve.mjs",
+    "check": "node tools/ci/check.mjs",
+    "assets": "python tools/gen_assets.py"
+  }
+}

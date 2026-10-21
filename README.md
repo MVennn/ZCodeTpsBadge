@@ -1,42 +1,39 @@
+<div align="center">
+
+<img src="assets/logo.png" width="128" alt="ZCode Tok/s Badge">
+
 # ZCode Tok/s Badge
 
-![License](https://img.shields.io/badge/License-MIT-blue) ![Platform](https://img.shields.io/badge/Platform-Windows-0078D4) ![Node](https://img.shields.io/badge/Node-20%2B-339933)
+**给 ZCode 桌面版聊天界面加一个胶囊形 `tok/s` 徽标**（非官方，与 ZCode 官方无隶属、合作或授权关系）
 
-> **一句话**：给 ZCode 桌面版聊天界面右下角加一个胶囊形 `tok/s` 徽标，样式跟随 ZCode 主题。
+流式输出时看速度，空闲时安静地待在输入框工具条里。
+
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![CI](https://github.com/MVennn/ZCodeTpsBadge/actions/workflows/ci.yml/badge.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4)
+![Node](https://img.shields.io/badge/Node-20%2B-339933)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
+</div>
+
+---
 
 ## 这是什么
 
-在 ZCode 桌面版（Electron）的渲染页里注入一个轻量徽标：流式输出时显示估算的 token 吞吐量，
-空闲后回到 `— tok/s`。不修改 ZCode 源码、不碰网络请求、不读取对话内容，只统计页面上正在增长的文本。
+在 ZCode 桌面版（Electron）的输入框底部工具条里注入一个胶囊徽标：
+流式输出时显示估算的 token 吞吐量，鼠标悬停显示本次运行的统计。
 
-徽标是**估算值**：CJK 0.6 token/字、其他 0.25 token/字符，思考文本也计入；不是模型返回的精确 usage。
-统计范围只限**助手消息正文**：侧边栏、用户消息、工具调用、终端、开发者工具都不计入。
+不修改 ZCode 源码、不碰网络请求、不读取对话内容，只统计聊天区里正在增长的文本。
 
 ## 效果
 
+<img src="assets/screenshot-dark.png" width="760" alt="ZCode Tok/s Badge 效果">
+
 - 流式输出：`42.1 tok/s`（超过 100 时取整）
 - 空闲约 1.8 秒：`— tok/s`
-- 胶囊外观：ZCode 卡片底色 + 10% 前景色描边 + 系统字体，深 / 浅主题自动适配
-- 位置：输入框底部工具条、用量 / 模型选择器左侧；窗口缩放时随工具条重排，并按宽度自动收缩（先隐藏圆点，再隐藏单位，最后缩小字号）
-- 悬停徽标：弹出速度统计卡（当前 / 平均 / 最高 / 最低 / 累计 tokens / 活跃时长）
-
-不需要改 ZCode 就能看效果：
-
-```bash
-node tools/preview/build.mjs
-node tools/preview/serve.mjs
-# 深色：http://127.0.0.1:8766/index.html
-# 浅色：http://127.0.0.1:8766/light/index.html
-```
-
-## 原理
-
-1. 修改 `resources/app.asar` 头部，把 `out/preload/index.cjs` 标记为 `unpacked`。
-2. 把原文件复制到 `resources/app.asar.unpacked/out/preload/index.cjs`，末尾追加徽标代码。
-3. Electron 每次启动都会加载外部这份 preload，徽标自动生效。
-4. 头部长度保持不变（空格补齐），所有文件偏移不受影响；原始头部备份为 `app.asar.header.tps-bak`。
-
-机制、边界与失败模式见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+- 位置：输入框工具条、用量 / 模型选择器左侧；窗口缩放时随工具条重排并三档收缩
+- 悬停：弹出当前 / 平均 / 最高 / 最低 / 累计 tokens / 活跃时长
+- 深 / 浅主题自动适配
 
 ## 环境要求
 
@@ -44,29 +41,12 @@ node tools/preview/serve.mjs
 - Node.js 20+（打补丁 / 还原 / 预览；徽标本身无依赖）
 - 备用模式的 CDP 注入器需要 Node.js 22+（用到全局 `WebSocket`）
 
-ZCode 路径按以下顺序解析：
-
-1. 环境变量 `ZCODE_RESOURCES` / `ZCODE_EXE`
-2. 项目根目录的 `config.local.json`（从 `config.example.json` 复制，已 gitignore）
-3. 默认 `%LOCALAPPDATA%\Programs\ZCode\resources`
-
-ZCode 装在非默认盘时，复制一份配置：
-
-```json
-{
-  "zcodeResources": "D:/Apps/ZCode/resources",
-  "zcodeExe": "D:/Apps/ZCode/ZCode.exe"
-}
-```
-
-查看当前解析结果：`node src/which.mjs resources`。
-
 ## 安装
 
 1. 从**托盘图标**完全退出 ZCode（点窗口 X 只是收进托盘，进程还在）。
 2. 双击 `tools/apply.cmd`，看到 `Applied` 和 `verified: unpacked=true ...`。
 3. 用平时的方式启动 ZCode。
-4. 聊天时右下角出现胶囊徽标。
+4. 输入框底部工具条出现胶囊徽标。
 
 命令行等价：
 
@@ -74,33 +54,45 @@ ZCode 装在非默认盘时，复制一份配置：
 node src/patch.mjs --apply
 ```
 
-ZCode 正在运行又不想退出时，可以 `node src/patch.mjs --apply --force`；
-补丁会立即写入，但徽标要等**下次完全重启**才出现。
+ZCode 正在运行又不想退出时，可以加 `--force`；补丁会立即写入，但徽标要等下次完全重启才出现。
+
+ZCode 路径解析顺序：`ZCODE_RESOURCES` / `ZCODE_EXE` 环境变量 → 项目根 `config.local.json` → `%LOCALAPPDATA%\Programs\ZCode\resources`。详见 [docs/BUILD.md](docs/BUILD.md)。
 
 ## 使用
 
-- 徽标在输入框底部工具条里、用量左侧，随窗口缩放重排并自动收缩；不拦截鼠标（`pointer-events: none`）。
+- 徽标在输入框工具条里、用量左侧，随窗口缩放重排并自动收缩；不拦截鼠标。
 - 只在工具条出现后注入，不会先出现在右下角。
 - 有流式文本时显示数值，停止输出约 1.8 秒后变回 `— tok/s`。
-- 鼠标悬停徽标显示本次运行的统计：当前、平均、最高、最低、累计 tokens、活跃时长。
 - 只统计聊天区里的助手输出；输入框、侧边栏、用户消息、工具调用、终端、开发者工具里的文本不计入。
 
-## ZCode 升级后
+### 悬停统计
 
-ZCode 升级会替换 `app.asar`，徽标随之消失。重新执行一次安装步骤即可。
+鼠标放到徽标上 120ms 后弹出统计卡，移开 80ms 后淡出。
 
-## 排错
-
-见 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)。最常见的三类：
-
-- 只关了窗口没退托盘 → preload 没有重新加载；
-- ZCode 升级覆盖了 `app.asar` → 重新 apply；
-- 补丁在 ZCode 运行时被安全检查拒绝 → 退出后重试，或加 `--force`。
+| 行 | 含义 |
+|---|---|
+| 当前 | 最近一次 EMA 速度 |
+| 平均 | 累计 tokens / 活跃时长 |
+| 最高 | 单次结算的最高瞬时速度 |
+| 最低 | 单次结算的最低瞬时速度 |
+| 累计 | 本次运行计入的 tokens |
+| 活跃 | 有输出的结算时长 |
 
 ## 反馈
 
-问题与建议：<https://github.com/MVennn/ZCodeTpsBadge/issues>。
-请附上 ZCode 版本、`node src/patch.mjs` 的输出和复现步骤。
+遇到问题、想要新功能，或者 ZCode 升级后徽标失灵，都可以到
+[Issues](https://github.com/MVennn/ZCodeTpsBadge/issues) 反馈。
+
+请附上：ZCode 版本、`node src/patch.mjs` 的输出、复现步骤；样式问题附截图。
+
+## 排错
+
+见 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)。最常见的四类：
+
+- 只关了窗口没退托盘 → preload 没有重新加载；
+- ZCode 升级覆盖了 `app.asar` → 重新 apply；
+- 工具条还没渲染（设置页等）→ 徽标不注入，属预期；
+- 一直是 `— tok/s` → 确认是聊天区里的助手输出；工具调用和侧边栏不计入。
 
 ## 卸载
 
@@ -121,38 +113,65 @@ ZCode 升级会替换 `app.asar`，徽标随之消失。重新执行一次安装
 
 ```
 ZCodeTpsBadge/
-├── README.md                 # 本文件：面向使用者
-├── CHANGELOG.md              # 症状 / 根因 / 改法 / 验证
-├── CONTRIBUTING.md           # 改动前先读什么
-├── PROGRESS.md               # 最近一次任务的断点记录（不随仓库分发）
-├── LICENSE                   # MIT
-├── config.example.json       # 本机路径配置示例
-├── docs/                     # 文档正本（索引见 docs/README.md）
+├── assets/                 # 图标、社交预览、效果截图
+├── docs/                   # 文档正本（索引见 docs/README.md）
 ├── src/
-│   ├── badge-source.mjs      # 徽标代码（preload 与 CDP 共用）
-│   ├── config.mjs            # ZCode 路径解析
-│   ├── which.mjs             # 打印解析结果
-│   ├── patch.mjs             # asar 补丁
-│   └── restore.mjs           # 还原
-└── tools/
-    ├── apply.cmd             # 双击打补丁
-    ├── restore.cmd           # 双击还原
-    ├── injector.mjs          # CDP 注入器（备用模式）
-    ├── launch-zcode-tps.*    # 备用模式启动器
-    └── preview/              # 本地预览（build.mjs / serve.mjs）
+│   ├── badge-source.mjs    # 徽标代码（preload 与 CDP 共用）
+│   ├── config.mjs          # ZCode 路径解析
+│   ├── which.mjs           # 打印解析结果
+│   ├── patch.mjs           # asar 补丁
+│   └── restore.mjs         # 还原
+├── tools/
+│   ├── apply.cmd           # 双击打补丁
+│   ├── restore.cmd         # 双击还原
+│   ├── injector.mjs        # CDP 注入器（备用模式）
+│   ├── launch-zcode-tps.*  # 备用模式启动器
+│   ├── gen_assets.py       # 重新生成图标与社交预览
+│   ├── ci/check.mjs        # 仓库检查
+│   └── preview/            # 本地预览
+├── .github/                # Issue 模板与 CI
+├── package.json            # 版本与 npm scripts
+├── README.md
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── SECURITY.md
+└── LICENSE
 ```
 
-## 边界与风险
+## 开发
 
-- 只做界面注入：不修改模型请求、不读取对话内容、不上传任何数据。
-- 修改 `app.asar` 属于对 ZCode 安装目录的非官方改动；ZCode 升级会覆盖，需重新打补丁。
-- 徽标数值是估算值，不用于计费或性能考核。
-- 本项目仅供个人学习与自用，与 ZCode 官方无关。
+```bash
+npm run check       # 语法 + 文档链接 + 资源 + 本机路径检查
+npm run preview     # 生成并启动本地预览
+npm run patch       # 打补丁
+npm run restore     # 还原
+python tools/gen_assets.py   # 重新生成图标（需要 Pillow）
+```
 
-## 文档
+改动前先读 [docs/REPO-STANDARD.md](docs/REPO-STANDARD.md)（仓库规范）、
+[docs/CODE-RULES.md](docs/CODE-RULES.md)（编码纪律）与
+[docs/DOC-RULES.md](docs/DOC-RULES.md)（文档规则）。
 
-文档索引：[docs/README.md](docs/README.md)。文档规则见 [docs/DOC-RULES.md](docs/DOC-RULES.md)。
+## 免责声明
+
+- 非官方项目，与 ZCode 官方及其关联方无任何隶属、合作、授权或支持关系。
+- 会修改本地 ZCode 安装目录的 `app.asar`；ZCode 升级会覆盖补丁，需要重新应用。
+- 徽标数值是按页面文本估算的，不是模型返回的精确 usage，不用于计费或性能结论。
+- 不收集、不上传任何数据，不读取对话内容。
+
+## 开源鸣谢
+
+| 项目 | 用途 |
+|---|---|
+| ZCode 桌面版 | 宿主应用 |
+| [Node.js](https://nodejs.org/) | 补丁、预览与工具脚本 |
+| [Pillow](https://python-pillow.org/) | 图标与社交预览生成 |
+| [GitHub](https://github.com/) | 代码托管与 CI |
 
 ## 许可证
 
-[MIT](LICENSE)。修改 ZCode 安装目录属于个人行为，风险自负；本项目与 ZCode 官方无关。
+[MIT](LICENSE)。
+
+## 文档
+
+文档索引：[docs/README.md](docs/README.md)。

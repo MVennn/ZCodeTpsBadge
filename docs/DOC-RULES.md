@@ -5,18 +5,20 @@
 
 本项目的文档结构沿用 GoldSunEnhance 的规范，按工具体量裁剪：
 保留分类索引、一句话引言、单一正本、链接纪律、变更触发矩阵；
-不设发版 / 版本号 / 免责双副本等不适用章节。
+不设发版 code、免责双副本、Android 构建等不适用章节。
 
 ---
 
 ## 1. 分类与定位
 
-docs/ 分两类（索引见 [README.md](README.md)）：
+docs/ 分四类（索引见 [README.md](README.md)）：
 
 | 类别 | 收什么 | 现有成员 |
 |---|---|---|
 | 架构与设计 | 注入机制、视觉规范 | ARCHITECTURE、DESIGN |
-| 流程与规范 | 编码纪律、文档规则、排错 | CODE-RULES、DOC-RULES、TROUBLESHOOTING |
+| 功能专项 | 一个功能一篇 | FEATURE-TPS-BADGE |
+| 流程与规范 | 构建、发布、版本、维护、命名、编码、文档、仓库、tools、排错 | BUILD、RELEASE、VERSIONING、MAINTENANCE、NAMING、CODE-RULES、REPO-STANDARD、DOC-RULES、TOOLS-DOC-RULES、TROUBLESHOOTING |
+| 参考资料 | Release 说明、assets、根文档 | release-notes/、assets/、CHANGELOG、README、CONTRIBUTING、SECURITY、LICENSE |
 
 每篇文档开头必须有 **「一句话」引言块**（`> **一句话**：…`）。
 新文档没有它不算写完。
@@ -27,11 +29,19 @@ docs/ 分两类（索引见 [README.md](README.md)）：
 
 | 规则 | 正本 |
 |---|---|
+| 仓库结构、README 骨架、assets、CI、Issue 模板 | [REPO-STANDARD.md](REPO-STANDARD.md) |
 | asar 机制、注入链路、重建 / 还原 | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| 胶囊尺寸、颜色 token、状态与动效 | [DESIGN.md](DESIGN.md) |
+| 功能范围、挂载位置、统计范围、验收 | [FEATURE-TPS-BADGE.md](FEATURE-TPS-BADGE.md) |
+| 胶囊尺寸、颜色 token、状态、悬停卡、响应式 | [DESIGN.md](DESIGN.md) |
 | 安装 / 卸载 / 使用步骤 | [README.md](../README.md) |
-| 排错步骤 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
+| 构建、路径配置、验证命令 | [BUILD.md](BUILD.md) |
+| 版本命名与进位 | [VERSIONING.md](VERSIONING.md) |
+| 发布清单与 Release 格式 | [RELEASE.md](RELEASE.md) |
+| 升级恢复、资源重建、仓库卫生 | [MAINTENANCE.md](MAINTENANCE.md) |
+| 文案与命名 | [NAMING.md](NAMING.md) |
+| tools/ 脚本与 README 规则 | [TOOLS-DOC-RULES.md](TOOLS-DOC-RULES.md) |
 | 编码纪律与自检清单 | [CODE-RULES.md](CODE-RULES.md) |
+| 排错步骤 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
 | 文档分类、链接、变更联动 | 本篇 |
 | 症状 / 根因 / 改法 / 验证 | [CHANGELOG.md](../CHANGELOG.md) |
 
@@ -48,10 +58,14 @@ docs/ 分两类（索引见 [README.md](README.md)）：
 
 | 变更 | 必须同步 |
 |---|---|
+| 改目录 / README 骨架 / assets 规格 / CI | [REPO-STANDARD.md](REPO-STANDARD.md)、[README.md](README.md) 索引 |
+| 改图标或品牌色 | `assets/icon.svg`、`python tools/gen_assets.py`、README |
 | 改徽标样式 / 尺寸 / 颜色 | [DESIGN.md](DESIGN.md)、[CHANGELOG.md](../CHANGELOG.md) |
-| 改统计口径（token 估算、EMA、空闲阈值） | [DESIGN.md](DESIGN.md)、[CODE-RULES.md](CODE-RULES.md) §2.6、CHANGELOG |
+| 改统计口径 / 挂载位置 / 计数范围 | [FEATURE-TPS-BADGE.md](FEATURE-TPS-BADGE.md)、[DESIGN.md](DESIGN.md)、CODE-RULES §2、CHANGELOG |
 | 改补丁 / 还原 / 重建机制 | [ARCHITECTURE.md](ARCHITECTURE.md)、[CODE-RULES.md](CODE-RULES.md)、CHANGELOG |
-| 改入口脚本或目录结构 | [README.md](../README.md) 文件结构、[TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
+| 改构建 / 检查命令 | [BUILD.md](BUILD.md)、`package.json`、README |
+| 改 tools/ 脚本 | [TOOLS-DOC-RULES.md](TOOLS-DOC-RULES.md)、`tools/README.md` |
+| 发版 | [VERSIONING.md](VERSIONING.md)、[RELEASE.md](RELEASE.md)、CHANGELOG、release-notes |
 | 新增 / 删除 / 改名文档 | [README.md](README.md) 索引 |
 | 用户可感知的改动 | CHANGELOG（按症状 / 根因 / 改法 / 验证写） |
 
@@ -59,6 +73,7 @@ docs/ 分两类（索引见 [README.md](README.md)）：
 
 - [README.md](README.md) 是 docs/ 的唯一索引；新增 / 删除 / 改名必须同步更新。
 - 新文档必须至少被一处既有文档引用（或进索引并有明确入口），不允许孤儿。
+- `npm run check` 会检查 docs 是否有孤儿文档。
 
 ## 6. 体量预算
 

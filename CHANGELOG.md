@@ -4,7 +4,7 @@
 
 ---
 
-## [未发布]
+## [0.1.0] — 2026-10-21
 
 ### 修复
 
@@ -48,6 +48,14 @@
   的第一个子节点，位于用量 / 模型选择器左侧；窗口缩放时随工具条重排并三档收缩
   （<600 隐藏圆点、<480 隐藏单位、<360 缩小字号），不再压住右侧滚动条。
   工具条重渲染后会自动重新挂载；工具条出现前不注入。
+- 仓库规范化（对齐 GoldSunEnhance）：
+  - README 重写为居中 logo + 徽章 + 固定章节；
+  - 新增 `assets/icon.svg`、`logo.png`、`icon.ico`、`social-preview.png`、效果截图；
+    品牌色改为 `#2B3242 → #161A22` 与 `#FFC24A → #FF7A00`；
+  - 新增 `docs/REPO-STANDARD.md`、`FEATURE-TPS-BADGE.md`、`BUILD.md`、`RELEASE.md`、
+    `VERSIONING.md`、`MAINTENANCE.md`、`NAMING.md`、`TOOLS-DOC-RULES.md`、`release-notes/`；
+  - 新增 `package.json`（0.1.0）、`tools/ci/check.mjs`、GitHub CI、Issue 模板、`SECURITY.md`、
+    `tools/README.md`。
 
 ---
 
