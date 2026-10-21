@@ -40,6 +40,7 @@ node --check "$(node src/which.mjs resources)/app.asar.unpacked/out/preload/inde
 | ZCode 升级替换了 `app.asar` | 重新 apply |
 | 补丁在运行时被拒绝 | 退出后重试，或 `--apply --force` 后完全重启 |
 | 外部 preload 被删 / 截断 | 重新 apply（脚本会重建） |
+| 输入框工具条还没渲染 | 徽标只在 `[data-composer-trailing-actions]` 出现后注入；设置页等无工具条的页面不显示，属预期 |
 
 ## 2. 一直是 `— tok/s`
 
@@ -52,9 +53,9 @@ node --check "$(node src/which.mjs resources)/app.asar.unpacked/out/preload/inde
 
 | 原因 | 解法 |
 |---|---|
-| 没有流式文本（只有思考 / 工具调用） | 正常；徽标只统计页面文本增长 |
-| 文本增长被跳过规则排除 | 输入框、终端、开发者工具不计入，属预期 |
-| 单次新增节点超过 800 字符 | 大块重绘不计入，属预期的防抖 |
+| 没有流式文本（只有工具调用） | 正常；徽标统计聊天区里的助手输出，思考文本也计入 |
+| 文本增长被跳过规则排除 | 输入框、侧边栏、用户消息、工具调用、终端、开发者工具不计入，属预期 |
+| 切换会话 / 打开侧边栏 | 历史消息首见只记基线；侧边栏在聊天区根外，属预期 |
 | 0.35 秒窗口内不足 0.05 token/s | 会显示 `—`；换长文本再试 |
 
 ## 3. 颜色不对 / 看不清
@@ -133,3 +134,20 @@ node src/patch.mjs
 - `Dry run only`：未打补丁；
 - `Already patched; rebuilding...` + `verified: unpacked=true`：已打补丁；
 - 报 `app.asar not found`：`ZCODE_RESOURCES` 指错了目录。
+
+## 10. 悬停卡不弹出 / 统计全是 `—`
+
+**步骤**
+
+- 确认鼠标停在徽标本体上，不是旁边的用量 / 模型选择器。
+- 检查 `#zcode-tps-tip` 是否存在、`data-open` 是否变成 `1`。
+- 统计行全是 `—` 时，先让模型输出一段长文本；没有 `instant >= 0.05` 的样本就不会有数值。
+
+**原因 / 解法**
+
+| 原因 | 解法 |
+|---|---|
+| 徽标被其他元素盖住 | 检查自定义 CSS / 插件是否覆盖了 `[data-composer-trailing-actions]` |
+| 徽标 `pointer-events` 被改成 `none` | 确认 `src/badge-source.mjs` 里 host 是 `pointer-events:auto` |
+| 只有工具调用、没有助手正文 | 统计只认聊天区根内的正文；工具输出不计入 |
+| 刚启动还没输出 | 正常；有第一个样本后数值才会出现 |

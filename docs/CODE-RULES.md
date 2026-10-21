@@ -58,13 +58,33 @@ preload 与 CDP 同时存在、页面重载、热更新都靠这两道守卫避�
 不依赖只在单一主题下定义的变量（如 `--color-foreground-subtle`）。
 规范见 [DESIGN.md](DESIGN.md)。
 
-**规则 2.5 · 高频路径保持低成本。**
-MutationObserver 只处理新增文本；单节点超过 800 字符跳过；结算周期 0.35 秒；
+**规则 2.5 · 只统计聊天区根，并按根总量算增量。**
+统计范围是聊天区根（`[data-testid="chat-view"]` / `[data-v4-timeline-message-layer]` /
+输入框父容器），**不要依赖 `data-trajectory-message-role="assistant"`**——该属性在真实聊天
+DOM 里不总是存在，用了会把计数整个漏掉。侧边栏在根外；用户消息、工具调用、输入框、按钮、
+终端、开发者工具在 `SKIP` 里排除。给根记一个 token 总量，只把增量计入——markdown 流式渲染
+会替换文本节点，按节点长度会把已有内容重复计数。第一次见到新根只记基线；单次新增子树
+超过 400 字符（历史消息 / 整段重渲染）也只更新基线。结算周期 0.35 秒，
 不使用 `setInterval` 轮询整个 DOM。
 
 **规则 2.6 · 统计口径固定。**
-CJK 0.6 token/字、其他 0.25 token/字符；EMA 系数 0.6 / 0.4；空闲 1.8 秒归零。
+CJK 0.6 token/字、其他 0.25 token/字符；EMA 系数 0.6 / 0.4；
+空闲判定是「最后一次文本增长后 1.8 秒」，**不要用 EMA 衰减来计时**——
+衰减会让计时器不断续命，表现为停止输出后数字久久不归零。
 改口径必须同步 [DESIGN.md](DESIGN.md) 与 [CHANGELOG.md](../CHANGELOG.md)。
+
+**规则 2.7 · 徽标挂在宿主工具条里，不固定悬浮。**
+只插入 `[data-composer-trailing-actions]` 的第一个子节点，随 flex 布局重排；
+工具条出现前**不注入**（禁止 fixed 兜底，否则启动时先闪一下右下角）。
+React 重渲染会移除注入节点，必须检测 `host.isConnected` 并重新挂载
+（MutationObserver + 每 60 帧兜底）。用 `ResizeObserver` 观察输入框容器宽度，
+按 <600 / <480 / <360 三档收缩（隐藏圆点 → 隐藏单位 → 缩小字号）。
+
+**规则 2.8 · 悬停卡挂在聊天区根外。**
+`#zcode-tps-tip` 必须挂在 `document.documentElement` 下，避免被计数观察器统计；
+卡片 `pointer-events:none`，不挡鼠标；位置按徽标 rect 计算并夹在视口内。
+统计值只从 tick 的 `instant` 累计（样本 / tokens / 活跃时长 / 最高 / 最低），
+不在 DOM 里反推。
 
 ## 3. 脚本与路径
 

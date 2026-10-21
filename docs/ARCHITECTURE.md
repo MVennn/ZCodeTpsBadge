@@ -70,7 +70,7 @@ ZCode.exe
        └─ out/preload/index.cjs 标记为 unpacked
             └─ 读取 resources/app.asar.unpacked/out/preload/index.cjs
                  └─ 末尾的徽标 IIFE 在 renderer 执行
-                      └─ 监听 DOM，右下角渲染 #zcode-tps-badge
+                      └─ 监听 DOM，在输入框工具条渲染 #zcode-tps-badge
 ```
 
 徽标脚本的启动条件（`src/badge-source.mjs`）：
@@ -78,6 +78,14 @@ ZCode.exe
 - `location.pathname` 以 `index.html` 结尾；
 - 页面里有 `#root`；
 - 尚未安装过（`window.__zcodeTpsBadgeInstalled`）且不存在 `#zcode-tps-badge`。
+
+挂载位置：只插入输入框底部工具条 `[data-composer-trailing-actions]` 的第一个子节点
+（在用量 / 模型选择器左侧）。工具条出现前**不注入**，所以启动时不会先出现在右下角。
+工具条重渲染可能移除注入节点：MutationObserver 发现 `host.isConnected` 为 false 时重新挂载，
+另外每 60 帧检查一次。`ResizeObserver` 观察输入框容器宽度，按 <600 / <480 / <360 三档收缩
+（隐藏圆点 → 隐藏单位 → 缩小字号）。
+悬停统计卡 `#zcode-tps-tip` 挂在 `document.documentElement` 下（不在聊天区根内，不会被计数），
+`position:fixed` 按徽标矩形定位，`pointer-events:none`。
 
 ## 6. 重建与还原
 
@@ -101,18 +109,32 @@ ZCode.exe
 ## 7. 运行时数据流
 
 ```
-DOM 文本增长
-  └─ MutationObserver（characterData / addedNodes）
-       └─ countText：CJK 0.6 token/字，其他 0.25 token/字符
-            └─ 每 0.35 秒结算一次瞬时速率
-                 └─ EMA（0.6 / 0.4）平滑
-                      └─ 渲染：>=100 取整，否则 1 位小数
-                           └─ 1.8 秒无输出 → 归零，显示 — tok/s
+聊天区根（[data-testid="chat-view"] / [data-v4-timeline-message-layer] / 输入框父容器）
+  └─ MutationObserver 判断变更是否落在根内（characterData / addedNodes）
+       └─ 根内所有非跳过文本的 token 总量
+            └─ 与上次总量比较，只把增量计入
+                 └─ 每 0.35 秒结算一次瞬时速率
+                      └─ EMA（0.6 / 0.4）平滑
+                           └─ 渲染：>=100 取整，否则 1 位小数
+                                └─ 最后一次文本增长后 1.8 秒 → 归零，显示 — tok/s
 ```
 
-跳过区域：`textarea`、`input`、`contenteditable`、聊天输入框、后台 bash / 终端 /
-开发者工具面板（见 `SKIP` 选择器）。单次新增节点文本超过 800 字符时不计入，
-避免把整块重绘当成一次爆发。
+每次 `instant >= 0.05` 的结算同时累计：样本数、tokens、活跃时长、最高 / 最低瞬时速度；
+悬停卡直接读取这些值，不在 DOM 里反推。
+
+**统计范围是聊天区根，不依赖 `data-trajectory-message-role="assistant"`。**
+该属性在真实聊天 DOM 里不总是存在，用它会把计数整个漏掉。侧边栏在根外；
+用户消息（`data-v4-user-input-bubble`）、工具调用（`data-tool-call-id`）、
+输入框 / 按钮 / 终端 / 开发者工具在 `SKIP` 里排除。
+
+**按根总量算增量，不按文本节点算长度。** markdown 流式渲染会替换文本节点，
+按节点长度会把已有内容重复计数；这里给聊天区根记一个 token 总量，
+只把「这次比上次多出来的部分」计入。第一次见到新根只记录基线；
+单次新增子树超过 400 字符（历史消息 / 整段重渲染）也只更新基线、不计入。
+
+跳过区域：`textarea`、`input`、`button`、`contenteditable`、聊天输入框、
+输入框工具条、后台 bash / 终端 / 开发者工具面板、用户消息、工具块、
+消息操作按钮与状态标签，见 `SKIP` 选择器。
 
 ## 8. 主题继承
 

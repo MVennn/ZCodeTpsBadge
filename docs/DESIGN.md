@@ -20,11 +20,22 @@
 | 内边距 | `4px 9px` |
 | 元素间距 | `6px` |
 | 圆点 | 6px 圆形 |
-| 位置 | `position: fixed; right: 14px; bottom: 12px` |
-| 层级 | `z-index: 2147483647` |
+| 位置 | 输入框底部工具条 `[data-composer-trailing-actions]` 的第一个 flex 子项（用量左侧）；工具条出现前不注入 |
+| 布局 | `display:inline-flex; flex:0 0 auto`，随工具条重排 |
 | 交互 | `pointer-events: none; user-select: none` |
 
-实测宽度约 85px（三位数 tok/s）。
+实测宽度：完整约 77px，最窄约 27px。
+
+### 响应式收缩
+
+`ResizeObserver` 观察输入框容器宽度，按三档收缩：
+
+| 档位 | 容器宽度 | 变化 | 实测宽度 |
+|---|---|---|---|
+| 完整 | ≥ 600px | 圆点 + 数值 + 单位 | 77px |
+| 1 | 480–599px | 隐藏圆点 | 约 65px |
+| 2 | 360–479px | 隐藏圆点 + 单位 | 32px |
+| 3 | < 360px | 字号 10px、内边距 `3px 7px` | 27px |
 
 ## 3. 颜色与字体 token
 
@@ -59,6 +70,31 @@
 - 单位固定显示 `tok/s`，不随状态变化。
 - 圆点用 `currentColor`，不写死任何颜色。
 - 状态切换用 `opacity .15s ease`，不做循环动画。
+- 空闲判定：最后一次文本增长后 1.8 秒归零，不是 EMA 降到阈值。
+
+### 悬停统计卡
+
+鼠标悬停徽标 120ms 后，在徽标正上方弹出统计卡；移开 80ms 后淡出。
+
+| 项 | 值 |
+|---|---|
+| 容器 | `position:fixed`，`min-width:172px`，`padding:8px 10px`，`border-radius:10px` |
+| 背景 / 描边 | `var(--color-card)` / `1px solid var(--color-border)` |
+| 阴影 | `0 8px 24px rgba(0,0,0,.35)` |
+| 字体 | `500 11px/1.5 var(--font-sans)`，数值 `tabular-nums` |
+| 位置 | 徽标上方 8px、水平居中；空间不足时放下方；左右夹在视口 8px 内 |
+| 交互 | 卡片 `pointer-events:none`，不挡鼠标 |
+
+内容（本次运行）：
+
+| 行 | 含义 |
+|---|---|
+| 当前 | 最近一次 EMA 速度 |
+| 平均 | 累计 tokens / 活跃时长 |
+| 最高 | 单次结算的最高瞬时速度 |
+| 最低 | 单次结算的最低瞬时速度（≥ 0.05） |
+| 累计 | 本次运行计入的 tokens |
+| 活跃 | 有输出的结算时长 |
 
 ## 5. 文案
 
@@ -73,7 +109,11 @@ node tools/preview/build.mjs
 node tools/preview/serve.mjs
 # 深色 http://127.0.0.1:8766/index.html
 # 浅色 http://127.0.0.1:8766/light/index.html
+# 计数范围夹具（不自动流式）http://127.0.0.1:8766/index.html?test=1
 ```
+
+`?test=1` 页面暴露 `__appendAssistant` / `__appendSidebar` / `__appendUser` /
+`__appendTool` / `__addHistoryMessage`，用于确认只有助手正文会计数。
 
 验收标准：
 
