@@ -4,7 +4,7 @@
 
 ---
 
-## [未发布] — 2026-10-22
+## [0.3.0] — 2026-10-22
 
 ### 改用开发者工具同源的 `session/debug`（0.3.0）
 
@@ -24,9 +24,9 @@ provider usage 也永远对不上。开发者工具根本没有做字符估算�
 - 徽标只消费快照里的最后一轮 `round`、会话 `cache` 与 tap 现算的速度统计。
   TPS 直接用 `tokensPerSecond = outputTokens ÷ generationDurationMs`，与面板同口径；
   思考 tokens 来自 `usage.reasoningTokens`，不再依赖页面文本。
-- 悬停卡新增平均 / 最高 / 最低 tok/s：tap 从 `rounds` 里取
-  `tokensPerSecond > 0` 的轮次，算术平均 / 最大 / 最小，最多最近 200 轮（与面板
-  表格一致）；移除平均命中（开发者工具摘要里已有）。
+- 悬停卡新增平均 / 最高 / 最低 tok/s：tap 从 `rounds` 里取**有效轮次**
+  （`tokensPerSecond > 0`、生成时长 ≥ 100ms、TPS ≤ 2000），算术平均 / 最大 / 最小，
+  最多最近 200 轮（与面板表格一致）；移除平均命中（开发者工具摘要里已有）。
 - 生成中只让圆点脉冲，数字保持上一轮；请求完成后下一次轮询更新。
 - 删除字符估算、DOM 文本统计、EMA、批量摊还、最高 / 最低 / 活跃等全部旧路径；
   删除计数用的整树 MutationObserver。
@@ -40,11 +40,13 @@ provider usage 也永远对不上。开发者工具根本没有做字符估算�
 - `node tools/ci/test-debug-source.mjs` 通过：请求帧为
   `[100, id, "zcode-agent", "readSessionDebug"] + [[{workspacePath, sessionId}]]`，
   201 快照只转发 round + cache + stats（两轮 TPS 20 / 40 → avg 30 / max 40 /
-  min 20），204 帧产生 activity，202 产生 error。
+  min 20；第三轮 64,666.7 tok/s / 6ms 被过滤，plausible=false），
+  204 帧产生 activity，202 产生 error。
 - `node tools/ci/check.mjs` 全绿（syntax 11 / required 33 / links 133 / docs 13 /
   source guard）。
-- `node src/patch.mjs` 干跑：原始 781611 → 811601 字节。
-- 真机效果待完全退出 ZCode 再启动后确认（本会话无法重启宿主）。
+- `node src/patch.mjs` 干跑：原始 781611 → 812697 字节。
+- 真机已确认：2026-10-22 完全重启后启动正常；徽标/悬停卡随 0.3.0 加载。
+  6 万异常轮过滤待下次异常轮出现时观察。
 
 ### 修复异常 TPS 带偏平均 / 最高（2026-10-22）
 
@@ -66,7 +68,8 @@ provider usage 也永远对不上。开发者工具根本没有做字符估算�
   `avg 30 / max 40 / min 20` 且 `plausible=false`；CI 增加 `isPlausibleRound`
   与 `lastRoundPlausible` 守卫。
 
-**验证**：RPC 测试与 `node tools/ci/check.mjs` 全绿；真机待完全重启确认。
+**验证**：RPC 测试与 `node tools/ci/check.mjs` 全绿；已随 0.3.0 重启加载，
+6 万异常轮过滤待下次异常轮出现时观察。
 
 ### 修复启动页卡住（0.3.0 真机事故，2026-10-22）
 
@@ -87,7 +90,8 @@ ChannelClient 停在 Uninitialized，启动页一直等服务初始化。
   update-status 窗口不得安装 tap；CI 增加 `servicePort.start(` 禁令。
 
 **验证**：RPC 测试与 `node tools/ci/check.mjs` 全绿；补丁已重新应用
-（781611 → 811601 字节，外部文件与 Electron asar 实读一致）；**真机待完全重启确认**。
+（781611 → 812697 字节，外部文件与 Electron asar 实读一致）；**真机已确认**
+（2026-10-22 重启后启动正常）。
 
 ### 修复「最高 1 万 tok/s」假峰与事件路未安装（2026-10-21 深夜）
 
