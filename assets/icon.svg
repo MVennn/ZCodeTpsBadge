@@ -4,15 +4,15 @@
       <stop offset="0" stop-color="#2B3242"/>
       <stop offset="1" stop-color="#161A22"/>
     </linearGradient>
-    <linearGradient id="accent" gradientUnits="userSpaceOnUse" x1="18" y1="54" x2="90" y2="54">
+    <linearGradient id="accent" gradientUnits="userSpaceOnUse" x1="14" y1="40" x2="94" y2="40">
       <stop offset="0" stop-color="#FFC24A"/>
       <stop offset="1" stop-color="#FF7A00"/>
     </linearGradient>
   </defs>
   <rect width="108" height="108" rx="24" fill="url(#bg)"/>
-  <circle cx="54" cy="54" r="40" fill="none" stroke="url(#accent)" stroke-opacity=".28" stroke-width="2"/>
-  <rect x="16" y="39" width="76" height="30" rx="15" fill="#252B38" stroke="#FFFFFF" stroke-opacity=".14"/>
-  <circle cx="29" cy="54" r="4" fill="url(#accent)"/>
-  <text x="38" y="59" font-family="Segoe UI, system-ui, sans-serif" font-size="15" font-weight="700" fill="#F2F2F5">42</text>
+  <path d="M14.34,39.56 A42.2,42.2 0 0 1 93.66,39.56" fill="none" stroke="url(#accent)" stroke-opacity=".24" stroke-width="1.7" stroke-linecap="round"/>
+  <rect x="15.8" y="39" width="76.3" height="29.9" rx="15" fill="#252B38" stroke="#FFFFFF" stroke-opacity=".14" stroke-width="0.42"/>
+  <circle cx="26.4" cy="54" r="3.8" fill="url(#accent)"/>
+  <text x="34.8" y="59" font-family="Segoe UI, system-ui, sans-serif" font-size="15" font-weight="700" fill="#F2F2F5">42</text>
   <text x="60" y="59" font-family="Segoe UI, system-ui, sans-serif" font-size="9.5" font-weight="500" fill="#A7ADB8">tok/s</text>
 </svg>

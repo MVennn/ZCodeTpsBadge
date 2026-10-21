@@ -39,8 +39,8 @@
 | [release-notes/](release-notes/README.md) | 面向用户的 Release 说明，文件名 = 版本号 |
 | [../assets/](../assets/) | 图标、社交预览、效果截图 |
 | [../CHANGELOG.md](../CHANGELOG.md) | 开发者记录：症状 / 根因 / 改法 / 验证 |
-| [../README.md](../README.md) | 面向使用者：是什么、安装、使用、卸载 |
-| [../CONTRIBUTING.md](../CONTRIBUTING.md) | 改动前先读什么、改完跑什么 |
+| [../README.md](../README.md) | 面向使用者：这是什么、安装、效果、反馈、免责声明 |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md) | 开发者流程：改动前先读什么、改完跑什么 |
 | [../SECURITY.md](../SECURITY.md) | 安全问题怎么报、哪些信息不要贴 |
 | [../LICENSE](../LICENSE) | MIT 许可证 |
 

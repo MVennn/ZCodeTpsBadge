@@ -22,7 +22,7 @@
 | 安装 / 还原 | `apply.cmd` · `restore.cmd` |
 | 备用 CDP 模式 | `injector.mjs` · `launch-zcode-tps.cmd` · `launch-zcode-tps.vbs` |
 | 本地预览 | `preview/build.mjs` · `preview/serve.mjs` |
-| 品牌资源 | `gen_assets.py` |
+| 品牌资源 | `make_social_preview.py`（`gen_assets.py` 是兼容入口） |
 | 仓库检查 | `ci/check.mjs` |
 
 ---
@@ -72,19 +72,36 @@ node tools/preview/serve.mjs
 `?test=1` 页面暴露 `__appendAssistant` / `__appendSidebar` / `__appendUser` /
 `__appendTool` / `__addHistoryMessage`。
 
-## gen_assets.py
+## make_social_preview.py
 
-从 `assets/icon.svg` 的设计重新生成：
+门面生成器：**栅格资源的唯一实现**。自己实现 SVG 渲染，不依赖 cairosvg / Inkscape，
+图形正本始终是 `assets/icon.svg`，门面文案写死在脚本顶部的 `BRAND` 里，改文案不用动渲染代码。
+
+产出：
 
 - `assets/logo.png`（512×512）
-- `assets/icon.ico`（16–256 多尺寸）
+- `assets/icon.ico`（16–256 多尺寸，需 `--ico`）
 - `assets/social-preview.png`（1280×640）
+
+```bash
+python tools/make_social_preview.py                 # 写 logo.png 与 social-preview.png
+python tools/make_social_preview.py --ico            # 额外写 icon.ico
+python tools/make_social_preview.py --preview-only  # 只写 social-preview.png
+```
+
+需要 Pillow 与 numpy。视觉语言对齐 GoldSunEnhance 的 `assets/social-preview.png`。
+品牌色与规格见 [docs/REPO-STANDARD.md](../docs/REPO-STANDARD.md) §4。
+
+## gen_assets.py
+
+`make_social_preview.py` 的**兼容入口**：只转调它，不另画一套。
+以前它自带一套画法，与 `assets/icon.svg` 各画各的，两边会漂；现在只有一份实现。
 
 ```bash
 python tools/gen_assets.py
 ```
 
-需要 Pillow。品牌色与规格见 [docs/REPO-STANDARD.md](../docs/REPO-STANDARD.md) §4。
+新代码一律调 `make_social_preview.py`。
 
 ## ci/check.mjs
 

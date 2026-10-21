@@ -11,7 +11,8 @@
 2. 按 [VERSIONING.md](VERSIONING.md) 判断进位，改 `package.json` 的 `version`。
 3. 把 `CHANGELOG.md` 的 `[未发布]` 改成 `[X.Y.Z] — YYYY-MM-DD`。
 4. 新建 `docs/release-notes/X.Y.Z.md`（格式见 [release-notes/README.md](release-notes/README.md)）。
-5. 更新 README 里的版本徽章（`version-X.Y.Z`）。
+5. 确认版本号三处一致：`package.json`、`docs/release-notes/X.Y.Z.md` 文件名、git tag
+   （门面 README 不挂版本徽章，不在此列）。
 6. 跑检查：
 
    ```bash
@@ -54,7 +55,7 @@ gh release create vX.Y.Z \
 
 ## 4. 发版后
 
-- 确认 README 的 CI 与版本徽章正常；
+- 确认 README 顶部的徽章行与效果截图正常显示；
 - 用干净 clone 跑一次 `npm run check`；
 - 在 Release 里确认 `docs/release-notes/` 的链接可点；
 - 若发现文案 / 链接错误，走补丁版本 `+0.0.1`，不要移动已发布的 tag。

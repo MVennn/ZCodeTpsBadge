@@ -13,7 +13,8 @@
 | `tools/*.mjs` | CDP 注入器 |
 | `tools/preview/` | 本地预览生成与静态服务 |
 | `tools/ci/` | 仓库检查 |
-| `tools/gen_assets.py` | 图标与社交预览生成 |
+| `tools/make_social_preview.py` | 门面生成器（logo / 社交预览 / ico），栅格资源的**唯一实现** |
+| `tools/gen_assets.py` | 上面那个的兼容入口，只转调，不另画一套 |
 
 ## 2. 脚本要求
 
@@ -36,7 +37,7 @@
 ## 4. 生成物
 
 - `tools/preview/site/` 是生成物，已 gitignore，不提交；
-- `assets/` 是品牌资源，由 `tools/gen_assets.py` 生成，提交；
+- `assets/` 是品牌资源，由 `tools/make_social_preview.py` 生成，提交；图形正本是 `assets/icon.svg`，栅格只从它渲染；
 - 临时文件用 `*.tmp-*` 命名，任务结束删除。
 
 ## 5. 检查

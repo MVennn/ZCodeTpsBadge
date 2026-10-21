@@ -48,7 +48,7 @@ npm run preview        # 生成并启动本地预览（8766）
 npm run patch          # 打补丁（要求 ZCode 完全退出）
 npm run patch:force    # ZCode 运行时写入，下次完全重启生效
 npm run restore        # 还原
-python tools/gen_assets.py   # 重新生成 logo / ico / social preview
+python tools/make_social_preview.py --ico   # 重新生成 logo / ico / social preview
 ```
 
 不使用 npm 时的等价命令：

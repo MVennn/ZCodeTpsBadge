@@ -26,53 +26,71 @@
 
 ```
 ZCodeTpsBadge/
-├── assets/                 # 品牌资源：icon.svg / logo.png / icon.ico /
-│                           #   social-preview.png / screenshot-dark.png
-├── docs/                   # 文档正本（索引见 docs/README.md）
-│   └── release-notes/      # 面向用户的版本说明
-├── src/                    # 运行时源码：徽标、补丁、还原、配置
-├── tools/                  # 开发期工具：双击入口、CDP、预览、资产生成、CI
-│   ├── ci/check.mjs
-│   └── preview/
-├── .github/                # Issue 模板与 CI
-├── package.json            # 版本、npm scripts
-├── README.md               # 面向使用者
-├── CHANGELOG.md            # 面向开发者
-├── CONTRIBUTING.md
-├── SECURITY.md
+├── assets/                      # 品牌资源
+│   ├── icon.svg                 # 矢量源（改图标先改它）
+│   ├── logo.png                 # 512×512，README 顶部 logo
+│   ├── icon.ico                 # 16 / 24 / 32 / 48 / 64 / 128 / 256
+│   ├── social-preview.png       # 1280×640，GitHub 社交预览
+│   └── screenshot-dark.png      # 效果截图
+├── docs/                        # 文档正本（索引见 docs/README.md）
+│   └── release-notes/           # 面向用户的版本说明
+├── src/                         # 运行时源码
+│   ├── badge-source.mjs         # 徽标代码（preload 与 CDP 共用）
+│   ├── config.mjs               # ZCode 路径解析
+│   ├── which.mjs                # 打印解析结果
+│   ├── patch.mjs                # asar 补丁（干跑 / 应用 / 重建）
+│   └── restore.mjs              # 还原
+├── tools/                       # 开发期工具（索引见 tools/README.md）
+│   ├── apply.cmd                # 双击打补丁
+│   ├── restore.cmd              # 双击还原
+│   ├── injector.mjs             # CDP 注入器（备用模式）
+│   ├── launch-zcode-tps.cmd     # 备用模式启动器
+│   ├── launch-zcode-tps.vbs
+│   ├── make_social_preview.py   # 门面生成器（logo / ico / 社交预览），栅格资源的唯一实现
+│   ├── gen_assets.py            # 上面那个的兼容入口
+│   ├── ci/check.mjs             # 仓库检查
+│   └── preview/                 # 本地预览（build.mjs / serve.mjs）
+├── .github/                     # Issue 模板与 CI
+├── package.json                 # 版本与 npm scripts
+├── README.md                    # 面向使用者
+├── CHANGELOG.md                 # 面向开发者
+├── CONTRIBUTING.md              # 怎么改、怎么验
+├── SECURITY.md                  # 安全问题怎么报
 ├── LICENSE
-└── config.example.json     # 本机路径配置示例
+└── config.example.json          # 本机路径配置示例
 ```
 
 `PROGRESS.md` 与 `config.local.json` 只在本机保留，已 gitignore，不随仓库分发。
 
 ## 3. README 骨架
 
-章节顺序固定：
+门面只面向使用者，不放开发者内容。章节顺序固定：
 
-1. 居中 logo、标题、一句话定位、徽章；
+1. 居中 logo、标题、一句话定位、徽章行；
 2. 这是什么；
-3. 效果（截图 + 要点）；
-4. 环境要求；
-5. 安装；
-6. 使用（含悬停统计）；
-7. 反馈；
-8. 排错（一句话 + 链接）；
-9. 卸载；
-10. 备用模式；
-11. 文件结构；
-12. 开发（命令 + 文档入口）；
-13. 免责声明；
-14. 开源鸣谢；
-15. 许可证；
-16. 文档索引。
+3. 环境要求；
+4. 安装；
+5. 效果（截图 + 用户能看到的几点）；
+6. 卸载；
+7. 备用模式（CDP）；
+8. 反馈；
+9. 免责声明；
+10. 开源鸣谢；
+11. 许可证。
 
 规则：
 
 - 首屏必须能看到 logo、一句话和徽章；
-- 截图只放 `assets/`，用相对路径；
-- 命令必须可直接复制，不写本机绝对路径；
-- README 只做概述，机制/视觉/构建细节链接到 docs 正本。
+- 徽章一行连续排布（空格分隔），**不用表格**；
+- 全文 **80–110 行**；写完数一遍，超了就删话，不删事实；
+- **不放**目录树、开发命令、文档索引链接 —— 它们分别属于本篇 §2、
+  [CONTRIBUTING.md](../CONTRIBUTING.md)、[docs/README.md](README.md)；
+- 指向本仓文档的链接用 GitHub 绝对地址
+  （`https://github.com/MVennn/ZCodeTpsBadge/blob/main/docs/XXX.md`），
+  logo 与截图用 `raw.githubusercontent.com` 绝对地址 —— 门面在仓外被打开时也能正常显示；
+- 截图只放 `assets/`，用绝对地址引用；
+- 不写本机绝对路径，不写改动过程；
+- README 只做概述，机制 / 视觉 / 构建 / 排错细节链接到 docs 正本。
 
 ## 4. assets 规范
 
@@ -94,7 +112,8 @@ ZCodeTpsBadge/
 | 次要文字 | `#A7ADB8` |
 
 应用内徽标**不套用**品牌色，仍使用 ZCode 主题变量（见 [DESIGN.md](DESIGN.md)）。
-改图标后运行 `python tools/gen_assets.py` 重新生成三份栅格资源。
+改图标后运行 `python tools/make_social_preview.py --ico` 重新生成栅格资源
+（`tools/gen_assets.py` 是它的兼容入口）；栅格只从 `assets/icon.svg` 渲染，不会再漂，规格见本篇 §4。
 
 ## 5. docs 分类
 
@@ -139,7 +158,7 @@ CI 在 push / PR 时运行 `node tools/ci/check.mjs`（Node 20）。
 ## 9. 命名
 
 - 文档：全大写 + 连字符（`FEATURE-TPS-BADGE.md`、`REPO-STANDARD.md`）；
-- 脚本：小写 + 连字符（`gen_assets.py`、`check.mjs`）；
+- 脚本：小写 + 连字符（`make_social_preview.py`、`check.mjs`）；
 - 资源：小写 + 连字符（`social-preview.png`）；
 - 用户可见文案：见 [NAMING.md](NAMING.md)；
 - 提交信息：`type: summary`，type 用 `feat` / `fix` / `docs` / `chore`。
@@ -148,8 +167,9 @@ CI 在 push / PR 时运行 `node tools/ci/check.mjs`（Node 20）。
 
 | 变更 | 必须同步 |
 |---|---|
-| 改目录 / README 骨架 / assets 规格 | 本篇、[docs/README.md](README.md) |
-| 改图标或品牌色 | `assets/icon.svg`、`python tools/gen_assets.py`、README |
+| 改目录 / README 骨架 / assets 规格 | 本篇、根 [README.md](../README.md)、[docs/README.md](README.md) |
+| 改图标或品牌色 | `assets/icon.svg`、`python tools/make_social_preview.py`、根 README |
+| 改开发者流程 / 命令 | [CONTRIBUTING.md](../CONTRIBUTING.md)、[BUILD.md](BUILD.md)、`package.json` |
 | 新增 / 删除文档 | [docs/README.md](README.md)、[DOC-RULES.md](DOC-RULES.md) §2 |
 | 改构建 / 检查命令 | [BUILD.md](BUILD.md)、`package.json` |
 | 发版 | [VERSIONING.md](VERSIONING.md)、[RELEASE.md](RELEASE.md)、CHANGELOG、release-notes |

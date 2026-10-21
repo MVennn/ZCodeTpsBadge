@@ -183,6 +183,9 @@ ELECTRON_RUN_AS_NODE=1 ./ZCode.exe -e "const fs=require('fs');const b=fs.readFil
 | `src/badge-source.mjs` | 徽标全部逻辑与样式；无依赖、可序列化 |
 | `src/patch.mjs` | 应用 / 重建补丁；干跑；`--force` |
 | `src/restore.mjs` | 还原头部并删除外部 preload |
+| `src/config.mjs` | ZCode 路径解析（环境变量 → `config.local.json` → 默认目录） |
+| `src/which.mjs` | 打印当前解析到的 resources / exe 路径 |
 | `tools/injector.mjs` | CDP 备用注入 |
 | `tools/launch-zcode-tps.*` | 备用模式启动器 |
 | `tools/preview/*` | 本地预览生成与静态服务 |
+| `tools/ci/check.mjs` | 仓库检查（语法 / 链接 / 资源 / 隐私） |

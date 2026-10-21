@@ -27,10 +27,11 @@ ZCode 升级会替换 `resources/app.asar`，补丁与徽标消失。步骤：
 改 `assets/icon.svg` 后：
 
 ```bash
-python tools/gen_assets.py
+python tools/make_social_preview.py --ico
 ```
 
 会重新生成 `assets/logo.png`、`assets/icon.ico`、`assets/social-preview.png`。
+栅格只从 `assets/icon.svg` 渲染，不会与矢量正本漂移。
 截图 `assets/screenshot-dark.png` 是手工截的，界面改动后重新截一张替换。
 
 GitHub 仓库的社交预览图在 **Settings → Social preview** 手工上传

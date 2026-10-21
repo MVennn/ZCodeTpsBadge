@@ -40,7 +40,23 @@
    - 用 `ELECTRON_RUN_AS_NODE=1 ZCode.exe` 读取 asar 内路径，确认返回外部文件；
    - 完全重启 ZCode 看实际效果（没验就明说没验）。
 8. 更新 `CHANGELOG.md`、对应 docs 与 `docs/release-notes/`；
-   改图标时运行 `python tools/gen_assets.py`。
+   改图标时运行 `python tools/make_social_preview.py --ico`（`tools/gen_assets.py` 是它的兼容入口）。
+
+## 常用开发命令
+
+```bash
+npm run check              # 语法 + 文档链接 + 资源 + 本机路径检查
+npm run preview            # 生成并启动本地预览（8766）
+npm run patch              # 打补丁（要求 ZCode 完全退出）
+npm run patch:force        # ZCode 运行时写入，下次完全重启生效
+npm run restore            # 还原补丁
+npm run assets             # 重新生成 logo / icon.ico / 社交预览
+```
+
+- 路径配置（`ZCODE_RESOURCES` / `config.local.json`）、预览地址与三层验证见
+  [docs/BUILD.md](docs/BUILD.md)；
+- 仓库的目录树见 [docs/REPO-STANDARD.md](docs/REPO-STANDARD.md) §2；
+- `tools/` 下每个脚本的用法见 [tools/README.md](tools/README.md)。
 
 ## 几条硬规矩
 
@@ -60,7 +76,7 @@
 ## 资源
 
 - 图标矢量源：`assets/icon.svg`；
-- 栅格资源：`python tools/gen_assets.py`（需要 Pillow）；
+- 栅格资源：`python tools/make_social_preview.py --ico`（需要 Pillow 与 numpy）；
 - 效果截图：`assets/screenshot-dark.png`，界面改动后手工替换。
 
 ## 不做什么
