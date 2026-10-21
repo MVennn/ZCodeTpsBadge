@@ -41,7 +41,7 @@
 
 ## 4. 落地位置
 
-发版前改两处：
+发版前改三处，值必须一致：
 
 ```json
 // package.json
@@ -49,8 +49,15 @@
 ```
 
 ```markdown
-<!-- docs/release-notes/0.1.0.md -->
-# 0.1.0 — 2026-10-21
+<!-- docs/release-notes/0.1.0.md（文件名 = 版本号，正文没有标题行） -->
+**一句话总结这版。**
+
+## 本版内容
 ```
 
-`CHANGELOG.md` 的 `[未发布]` 段在发版时改为 `[0.1.0] — YYYY-MM-DD`。
+```bash
+git tag -a v0.1.0 -m "v0.1.0"
+```
+
+`CHANGELOG.md` 的 `[未发布]` 段在发版时改为 `[0.1.0] — YYYY-MM-DD`；
+Release 说明的格式见 [release-notes/README.md](release-notes/README.md)。

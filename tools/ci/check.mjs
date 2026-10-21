@@ -153,7 +153,31 @@ if (!social || social.width !== 1280 || social.height !== 640) {
 }
 pass('assets: logo 512x512, social 1280x640');
 
-// 6. Personal paths / secrets
+// 6. Release notes shape
+// 口径正本见 docs/release-notes/README.md：清单，不是文章。
+const notesDir = path.join(ROOT, 'docs/release-notes');
+const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+if (!fs.existsSync(path.join(notesDir, `${version}.md`))) {
+  fail('release-notes', `docs/release-notes/${version}.md missing for package.json version`);
+}
+const noteVerbs = ['新增', '调整', '修复', '优化', '移除'];
+const noteFiles = fs.readdirSync(notesDir).filter((name) => /^\d+\.\d+\.\d+\.md$/.test(name));
+for (const name of noteFiles) {
+  const label = `docs/release-notes/${name}`;
+  const text = fs.readFileSync(path.join(notesDir, name), 'utf8');
+  if (!text.startsWith('**')) fail('release-notes', `${label}: first line must be a bold summary`);
+  if (!text.includes('## 本版内容')) fail('release-notes', `${label}: missing "## 本版内容"`);
+  if (!text.includes('> 风险提示：')) fail('release-notes', `${label}: missing fixed risk notice`);
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.startsWith('- ')) continue;
+    if (!noteVerbs.some((verb) => line.startsWith(`- ${verb} `))) {
+      fail('release-notes', `${label}: item must start with ${noteVerbs.join(' / ')}: ${line}`);
+    }
+  }
+}
+pass(`release notes: ${noteFiles.length} files, shape + fixed tail`);
+
+// 7. Personal paths / secrets
 const skip = new Set(['tools/ci/check.mjs', 'config.local.json', 'PROGRESS.md']);
 const textExtensions = /\.(md|mjs|js|json|cmd|vbs|py|yml|yaml|txt|svg|gitignore|gitattributes)$/;
 const personalName = 'Sans' + 'K';

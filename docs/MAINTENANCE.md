@@ -81,5 +81,5 @@ npm run check
 1. 干净 clone 跑 `npm run check`；
 2. 从零 apply → 重启 → 验收；
 3. 对照 [FEATURE-TPS-BADGE.md](FEATURE-TPS-BADGE.md) §8 的验收清单；
-4. 检查 README 截图是否过期；
+4. 检查 README 的效果说明与 `docs/` 里的截图是否过期；
 5. 检查 Release notes 与 CHANGELOG 是否对得上。

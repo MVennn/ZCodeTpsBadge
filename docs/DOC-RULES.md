@@ -37,7 +37,8 @@ docs/ 分四类（索引见 [README.md](README.md)）：
 | 开发者流程、开发命令、改完跑什么 | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 | 构建、路径配置、验证命令 | [BUILD.md](BUILD.md) |
 | 版本命名与进位 | [VERSIONING.md](VERSIONING.md) |
-| 发布清单与 Release 格式 | [RELEASE.md](RELEASE.md) |
+| 发布步骤、发版前后检查、推送节奏 | [RELEASE.md](RELEASE.md) |
+| Release 说明的格式与写法 | [release-notes/README.md](release-notes/README.md) |
 | 升级恢复、资源重建、仓库卫生 | [MAINTENANCE.md](MAINTENANCE.md) |
 | 文案与命名 | [NAMING.md](NAMING.md) |
 | tools/ 脚本与 README 规则 | [TOOLS-DOC-RULES.md](TOOLS-DOC-RULES.md) |

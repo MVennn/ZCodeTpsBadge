@@ -22,7 +22,7 @@
 | 文档 | 一句话定位 |
 |---|---|
 | [BUILD.md](BUILD.md) | 构建与验证：环境、路径配置、命令、三层验证 |
-| [RELEASE.md](RELEASE.md) | 发布清单：版本、tag、GitHub Release、发版后检查 |
+| [RELEASE.md](RELEASE.md) | 发布清单：发版步骤、Release 说明口径、发版前后检查、推送节奏 |
 | [VERSIONING.md](VERSIONING.md) | 版本命名：三段式进位规则与 tag 约定 |
 | [MAINTENANCE.md](MAINTENANCE.md) | 维护手册：ZCode 升级恢复、资源重建、仓库卫生 |
 | [NAMING.md](NAMING.md) | 文案与命名：产品名、徽标文案、统计标签、提交信息 |
@@ -36,8 +36,8 @@
 
 | 位置 | 一句话定位 |
 |---|---|
-| [release-notes/](release-notes/README.md) | 面向用户的 Release 说明，文件名 = 版本号 |
-| [../assets/](../assets/) | 图标、社交预览、效果截图 |
+| [release-notes/](release-notes/README.md) | 面向用户的 Release 说明（清单口径，一行一条），文件名 = 版本号 |
+| [../assets/](../assets/) | 图标、社交预览 |
 | [../CHANGELOG.md](../CHANGELOG.md) | 开发者记录：症状 / 根因 / 改法 / 验证 |
 | [../README.md](../README.md) | 面向使用者：这是什么、安装、效果、反馈、免责声明 |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | 开发者流程：改动前先读什么、改完跑什么 |

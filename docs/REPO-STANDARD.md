@@ -69,7 +69,7 @@ ZCodeTpsBadge/
 2. 这是什么；
 3. 环境要求；
 4. 安装；
-5. 效果（截图 + 用户能看到的几点）；
+5. 效果（用户能看到的几点；截图如放进 `docs/`，用绝对地址引用）；
 6. 卸载；
 7. 备用模式（CDP）；
 8. 反馈；
@@ -86,8 +86,8 @@ ZCodeTpsBadge/
   [CONTRIBUTING.md](../CONTRIBUTING.md)、[docs/README.md](README.md)；
 - 指向本仓文档的链接用 GitHub 绝对地址
   （`https://github.com/MVennn/ZCodeTpsBadge/blob/main/docs/XXX.md`），
-  logo 与截图用 `raw.githubusercontent.com` 绝对地址 —— 门面在仓外被打开时也能正常显示；
-- 截图只放 `assets/`，用绝对地址引用；
+  logo 用 `raw.githubusercontent.com` 绝对地址 —— 门面在仓外被打开时也能正常显示；
+- 截图放 `docs/`（不进 `assets/` 门面），用 GitHub 绝对地址引用；
 - 不写本机绝对路径，不写改动过程；
 - README 只做概述，机制 / 视觉 / 构建 / 排错细节链接到 docs 正本。
 
@@ -139,6 +139,7 @@ ZCodeTpsBadge/
 - 所有 `.mjs` 通过 `node --check`；
 - Markdown 相对链接可解析；
 - 必需文件与资源存在；
+- Release 说明符合清单口径（首行加粗、`## 本版内容`、固定风险提示、五个动词）；
 - `docs/` 无孤儿文档；
 - 仓库文本不含本机用户名路径或明显密钥。
 

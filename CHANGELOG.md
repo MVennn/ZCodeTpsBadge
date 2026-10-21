@@ -23,6 +23,19 @@
 - 调整 文档 —— `docs/DOC-RULES.md` 正本映射表与 `docs/README.md` 索引同步；
   各仓 docs 里指向根 README 章节的文字引用改指新正本
 - 调整 仓库 —— GitHub 仓库描述与话题改成面向使用者的口径（与 README 副标题同调）
+- 修复 文档 —— `docs/README.md` 的 assets 索引仍写着「效果截图」，已删；
+  `docs/REPO-STANDARD.md` 与 `docs/MAINTENANCE.md` 的截图落点改为 `docs/`
+
+### Release 说明口径（2026-10-21）
+
+- 调整 文档 —— `docs/release-notes/` 改为清单口径：第一行加粗总结（无「一句话」引言块、
+  无 `# 版本号 — 日期` 标题）、五个动词一行一条、固定尾巴；
+  `0.1.0` / `0.2.0` / `0.2.1` 三份说明按此重写（事实不变）
+- 调整 文档 —— `docs/RELEASE.md` 重写为「发版发什么 / 发版步骤 / 说明口径 /
+  发版前后检查 / 推送节奏」；`docs/VERSIONING.md` §4 与 `docs/DOC-RULES.md`
+  正本映射同步，`docs/README.md` 索引改指新正本
+- 新增 检查 —— `tools/ci/check.mjs` 校验 Release 说明形状：首行加粗、
+  `## 本版内容`、固定风险提示、条目只用五个动词；注入坏文件验证会红
 
 ---
 
