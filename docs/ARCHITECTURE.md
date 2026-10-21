@@ -69,8 +69,11 @@ ZCode.exe
   └─ Electron 读取 resources/app.asar 头部
        └─ out/preload/index.cjs 标记为 unpacked
             └─ 读取 resources/app.asar.unpacked/out/preload/index.cjs
-                 └─ 末尾的徽标 IIFE 在 renderer 执行
-                      └─ 监听 DOM，在输入框工具条渲染 #zcode-tps-badge
+                 └─ 末尾依次执行：
+                      1. __tpsEventTapSource 绑定 tap 源码（patch.mjs 预先序列化）
+                      2. 徽标 IIFE 在 renderer（隔离世界）执行
+                           ├─ installTap()：webFrame.executeJavaScript 把 tap 注入主世界
+                           └─ 监听 DOM，在输入框工具条渲染 #zcode-tps-badge
 ```
 
 徽标脚本的启动条件（`src/badge-source.mjs`）：
@@ -108,6 +111,41 @@ ZCode.exe
 
 ## 7. 运行时数据流
 
+徽章有两条计数路径：**事件路**（主）与 **DOM 路**（兜底）。事件路 4 秒内有产出时
+只用事件路；否则回到 DOM 路。
+
+### 7.1 事件路（`src/event-source.mjs`）
+
+ZCode（desktop@2.x）的聊天流不走渲染层 HTTP：宿主进程（utilityProcess）通过
+`MessageChannelMain` 给渲染层一个端口（窗口消息 `zcode:service-port`），会话增量以
+**二进制 RPC**（VSCode 式 VSBuffer marshalling）在该端口上以 `EventFire`(204) 帧下发：
+
+```
+宿主进程 (utilityProcess)
+  └─ MessagePort (端口消息 = 一个 VSBuffer)
+       └─ [marshalled 数组: [204, requestId, …]] + [marshalled 载荷]
+            └─ 载荷 = { topic:"conversation/<sid>",
+                        payload:{ kind, deltas:[{op, rowId, append, path, row…}] } }
+```
+
+marshalling 类型字节：`0` Undefined / `1` String / `2` Buffer / `3` VSBuffer /
+`4` Array / `5` Object(JSON，Uint8Array 转 base64) / `6` Int；
+String/Object 等前缀 LEB128 varint 长度。
+
+tap 注入主世界（`webFrame.executeJavaScript`，见 §5 链路），包装
+`MessagePort.prototype.addEventListener` 与 `onmessage` setter，为每个端口挂一个
+**被动**监听器：解码 `EventFire` 帧，凡 `topic` 以 `conversation/` 开头：
+
+- `row.delta` → `append.length` 即为字符增量；
+- `row.appended` / `row.upserted` → 按行记录文本长度基线，只发差值；
+- `row.removed` → 清理基线。
+
+行文本取 `row.text`（assistantText / reasoning）或 `row.state.input` / `row.inputText`
+（toolCall）。字符增量经 `window.postMessage`（可跨隔离世界）交给徽章，徽章按 §4
+口径换算 token。**tap 从不改写消息、不拦截宿主调用，解码失败静默跳过。**
+
+### 7.2 DOM 路（`src/badge-source.mjs`，兜底）
+
 ```
 聊天区根（[data-testid="chat-view"] / [data-v4-timeline-message-layer] / 输入框父容器）
   └─ MutationObserver 判断变更是否落在根内（characterData / addedNodes）
@@ -128,7 +166,7 @@ ZCode.exe
 没有时退回 `chat-view` / 时间线。侧边栏在根外；用户消息、输入框 / 按钮 / 终端 /
 开发者工具、消息操作按钮 / 状态标签 / 推理标签在 `SKIP` 里排除。
 思考文本（`data-reasoning-content`）与工具调用块（`data-tool-call-id`）计入；
-工具块内输出也会计入，这是为了让调用阶段也有速度显示的取舍。
+思考行折叠时正文不在 DOM，这条路径因此数不到折叠的思考——事件路补上了这个洞。
 
 **按根总量算增量，不按文本节点算长度。** markdown 流式渲染会替换文本节点，
 按节点长度会把已有内容重复计数；这里给聊天区根记一个 token 总量，
@@ -180,7 +218,8 @@ ELECTRON_RUN_AS_NODE=1 ./ZCode.exe -e "const fs=require('fs');const b=fs.readFil
 
 | 文件 | 职责 |
 |---|---|
-| `src/badge-source.mjs` | 徽标全部逻辑与样式；无依赖、可序列化 |
+| `src/badge-source.mjs` | 徽标全部逻辑与样式；双路计数；无依赖、可序列化 |
+| `src/event-source.mjs` | 主世界事件 tap：解码 RPC 端口会话帧；无依赖、可序列化 |
 | `src/patch.mjs` | 应用 / 重建补丁；干跑；`--force` |
 | `src/restore.mjs` | 还原头部并删除外部 preload |
 | `src/config.mjs` | ZCode 路径解析（环境变量 → `config.local.json` → 默认目录） |

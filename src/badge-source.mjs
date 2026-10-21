@@ -1,5 +1,13 @@
 // Self-contained badge script. Serialized with toString() and injected into the
-// renderer (via preload or CDP). Keep it dependency-free.
+// preload (sandboxed). Keep it dependency-free.
+//
+// Token counting has two paths:
+//   1. Event path (primary): a tap injected into the main world observes the
+//      binary RPC MessagePort (`zcode:service-port`), decodes EventFire frames
+//      and posts per-delta character counts here via window.postMessage.
+//      See src/event-source.mjs. Works while reasoning rows are collapsed.
+//   2. DOM path (fallback): if no event has arrived within 4s of DOM text
+//      growth, fall back to estimating from chat-DOM text deltas.
 
 export function badgeSource() {
   if (window.__zcodeTpsBadgeInstalled) return;
@@ -178,6 +186,12 @@ export function badgeSource() {
     }
     initialPlace();
 
+    // ------------------------------------------------------------------
+    // Counting. `tokens` accumulates estimated tokens since the last
+    // settlement tick. The event path adds real delta sizes (converted with
+    // the same estimator); the DOM path adds root-total growth. When the
+    // event path has produced data recently, DOM deltas are ignored.
+    // ------------------------------------------------------------------
     let tokens = 0;
     let ema = 0;
     let lastAt = performance.now();
@@ -188,6 +202,8 @@ export function badgeSource() {
     let statActiveMs = 0;
     let statMax = 0;
     let statMin = 0;
+    let lastEventAt = 0;
+    let eventEverSeen = false;
 
     function estimateTokens(s) {
       if (!s) return 0;
@@ -203,61 +219,28 @@ export function badgeSource() {
       return cjk * 0.6 + (s.length - cjk) * 0.25;
     }
 
-    function fmtSpeed(n) {
-      if (!isFinite(n) || n <= 0) return '\u2014';
-      return (n >= 100 ? String(Math.round(n)) : n.toFixed(1)) + ' tok/s';
-    }
+    // --- event path -----------------------------------------------------
+    // The tap lives in the main world (contextIsolation). postMessage
+    // strings cross the isolation boundary; structured objects would not.
+    window.addEventListener('message', (e) => {
+      const d = e.data;
+      if (!d || d.src !== 'zcode-tps-event') return;
+      if (d.kind === 'delta' && typeof d.n === 'number' && d.n > 0) {
+        tokens += d.n * 0.25;
+        lastEventAt = performance.now();
+        eventEverSeen = true;
+      } else if (d.kind === 'usage' && typeof d.output === 'number') {
+        // Final frame of a step carries authoritative output token counts
+        // (incl. reasoning). Nudge the total by the difference so the
+        // cumulative stat converges on real usage over a run.
+        const drift = (d.output + (d.reasoning || 0)) * 0.25 - statTokens;
+        if (isFinite(drift) && Math.abs(drift) > 1) statTokens += drift;
+        lastEventAt = performance.now();
+        eventEverSeen = true;
+      }
+    });
 
-    function fmtInt(n) {
-      return Math.round(n).toLocaleString('zh-CN');
-    }
-
-    function updateTip() {
-      const avg = statActiveMs > 0 ? statTokens / (statActiveMs / 1000) : 0;
-      tipValues.cur.textContent = fmtSpeed(ema);
-      tipValues.avg.textContent = fmtSpeed(avg);
-      tipValues.max.textContent = fmtSpeed(statMax);
-      tipValues.min.textContent = fmtSpeed(statMin);
-      tipValues.total.textContent = statSamples > 0 ? fmtInt(statTokens) + ' tokens' : '\u2014';
-      tipValues.active.textContent = statActiveMs > 0 ? (statActiveMs / 1000).toFixed(1) + ' s' : '\u2014';
-    }
-
-    function placeTip() {
-      const r = host.getBoundingClientRect();
-      const tr = tip.getBoundingClientRect();
-      let left = r.left + r.width / 2 - tr.width / 2;
-      left = Math.max(8, Math.min(left, innerWidth - tr.width - 8));
-      let top = r.top - tr.height - 8;
-      if (top < 8) top = r.bottom + 8;
-      tip.style.left = Math.round(left) + 'px';
-      tip.style.top = Math.round(top) + 'px';
-    }
-
-    function positionTip() {
-      if (tip.dataset.open === '1') placeTip();
-    }
-
-    let showTimer = 0;
-    let hideTimer = 0;
-    function showTip() {
-      clearTimeout(showTimer);
-      clearTimeout(hideTimer);
-      showTimer = setTimeout(() => {
-        updateTip();
-        placeTip();
-        tip.dataset.open = '1';
-      }, 120);
-    }
-    function hideTip() {
-      clearTimeout(showTimer);
-      hideTimer = setTimeout(() => {
-        delete tip.dataset.open;
-      }, 80);
-    }
-    host.addEventListener('mouseenter', showTip);
-    host.addEventListener('mouseleave', hideTip);
-    window.addEventListener('resize', positionTip);
-
+    // --- DOM fallback path ----------------------------------------------
     const SKIP = [
       'textarea',
       'input',
@@ -352,11 +335,12 @@ export function badgeSource() {
 
     // Count growth of the whole chat root, not individual nodes: markdown
     // re-renders replace nodes, and the sidebar is outside this root.
+    // Only used while the event path is silent (fallback).
     new MutationObserver((muts) => {
       const ready = ensureRoot();
-      let dirty = false;
-      let bulk = false;
       if (ready) {
+        let dirty = false;
+        let bulk = false;
         for (const m of muts) {
           if (m.type === 'characterData') {
             if (touchesRoot(m.target)) { dirty = true; break; }
@@ -368,12 +352,12 @@ export function badgeSource() {
           }
           if (dirty) break;
         }
-      }
-      if (dirty) {
-        const now = rootTokenTotal(chatRoot);
-        const delta = now - rootTotal;
-        rootTotal = now;
-        if (!bulk && delta > 0) tokens += delta;
+        if (dirty && !(eventEverSeen && performance.now() - lastEventAt < 4000)) {
+          const now = rootTokenTotal(chatRoot);
+          const delta = now - rootTotal;
+          rootTotal = now;
+          if (!bulk && delta > 0) tokens += delta;
+        }
       }
       if (!host.isConnected) placeBadge();
     }).observe(document.body, { subtree: true, childList: true, characterData: true });
@@ -383,21 +367,95 @@ export function badgeSource() {
       dot.style.opacity = on ? '1' : '.45';
     }
 
+    function fmtSpeed(n) {
+      if (!isFinite(n) || n <= 0) return '\u2014';
+      return (n >= 100 ? String(Math.round(n)) : n.toFixed(1)) + ' tok/s';
+    }
+
+    function fmtInt(n) {
+      return Math.round(n).toLocaleString('zh-CN');
+    }
+
+    function updateTip() {
+      const avg = statActiveMs > 0 ? statTokens / (statActiveMs / 1000) : 0;
+      tipValues.cur.textContent = fmtSpeed(ema);
+      tipValues.avg.textContent = fmtSpeed(avg);
+      tipValues.max.textContent = fmtSpeed(statMax);
+      tipValues.min.textContent = fmtSpeed(statMin);
+      tipValues.total.textContent = statSamples > 0 ? fmtInt(statTokens) + ' tokens' : '\u2014';
+      tipValues.active.textContent = statActiveMs > 0 ? (statActiveMs / 1000).toFixed(1) + ' s' : '\u2014';
+    }
+
+    function placeTip() {
+      const r = host.getBoundingClientRect();
+      const tr = tip.getBoundingClientRect();
+      let left = r.left + r.width / 2 - tr.width / 2;
+      left = Math.max(8, Math.min(left, innerWidth - tr.width - 8));
+      let top = r.top - tr.height - 8;
+      if (top < 8) top = r.bottom + 8;
+      tip.style.left = Math.round(left) + 'px';
+      tip.style.top = Math.round(top) + 'px';
+    }
+
+    function positionTip() {
+      if (tip.dataset.open === '1') placeTip();
+    }
+
+    let showTimer = 0;
+    let hideTimer = 0;
+    function showTip() {
+      clearTimeout(showTimer);
+      clearTimeout(hideTimer);
+      showTimer = setTimeout(() => {
+        updateTip();
+        placeTip();
+        tip.dataset.open = '1';
+      }, 120);
+    }
+    function hideTip() {
+      clearTimeout(showTimer);
+      hideTimer = setTimeout(() => {
+        delete tip.dataset.open;
+      }, 80);
+    }
+    host.addEventListener('mouseenter', showTip);
+    host.addEventListener('mouseleave', hideTip);
+    window.addEventListener('resize', positionTip);
+
     function tick() {
       const now = performance.now();
+      // Skip the whole settlement while the window is hidden: rAF is paused
+      // anyway, so without this the first frame after returning accumulates
+      // the whole background duration as "active" and drags the average down.
+      // tokens keep accumulating and are settled on the next visible tick.
+      if (document.hidden) {
+        lastAt = now;
+        requestAnimationFrame(tick);
+        return;
+      }
       const dt = (now - lastAt) / 1000;
       if (dt >= 0.35) {
+        // A window that absorbed many deltas at once (background catch-up or
+        // one big row upsert) has lost its timing — its raw "speed" would be
+        // a fabrication. Such a frame drains at the recent EMA rate instead:
+        // tokens reach the cumulative stats, active time is reconstructed
+        // from that rate, and max/min never see the fabricated instant.
         const counted = tokens;
-        const instant = counted / dt;
-        tokens = 0;
+        const cap = Math.ceil(dt * 800);
+        const drain = counted > cap && ema > 0;
+        const settled = drain ? Math.min(counted, Math.ceil(ema * dt)) : counted;
+        const instant = settled / dt;
+        tokens = counted - settled;
         lastAt = now;
         if (instant >= 0.05) {
           lastTextAt = now;
           statSamples++;
-          statTokens += counted;
-          statActiveMs += dt * 1000;
-          if (instant > statMax) statMax = instant;
-          if (statMin === 0 || instant < statMin) statMin = instant;
+          statTokens += settled;
+          statActiveMs += drain ? (settled / ema) * 1000 : dt * 1000;
+          if (!drain) {
+            if (instant > statMax) statMax = instant;
+            if (statMin === 0 || instant < statMin) statMin = instant;
+          }
           ema = ema === 0 ? instant : ema * 0.6 + instant * 0.4;
           value.textContent = ema >= 100 ? String(Math.round(ema)) : ema.toFixed(1);
           setActive(true);
@@ -417,9 +475,26 @@ export function badgeSource() {
     requestAnimationFrame(tick);
   }
 
+  // --- main-world event tap bridge --------------------------------------
+  // The preload is sandboxed and isolated; the app's MessagePort traffic
+  // lives in the main world. webFrame.executeJavaScript runs the tap there.
+  // The tap reports delta sizes via window.postMessage, which crosses worlds.
+  // `__tpsEventTapSource` is pre-bound by patch.mjs to eventSource.toString().
+  function installTap() {
+    try {
+      const tap = typeof __tpsEventTapSource === 'string'
+        ? __tpsEventTapSource
+        : typeof eventTapSource === 'function' ? '(' + eventTapSource.toString() + ')()' : null;
+      if (!tap) return;
+      const { webFrame } = require('electron');
+      webFrame.executeJavaScript(tap, false).catch(() => {});
+    } catch {}
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot, { once: true });
   } else {
     boot();
   }
+  installTap();
 }

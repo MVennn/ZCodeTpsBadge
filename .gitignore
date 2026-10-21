@@ -15,6 +15,10 @@ tools/preview/site/
 # Node
 node_modules/
 
+# Python 字节码缓存（tools/ 下的资源生成脚本会生成）
+__pycache__/
+*.py[cod]
+
 # 系统垃圾
 Thumbs.db
 .DS_Store

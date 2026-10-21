@@ -24,6 +24,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { badgeSource } from './badge-source.mjs';
+import { eventSource } from './event-source.mjs';
 import { ZCODE_RESOURCES } from './config.mjs';
 
 const ASAR = path.join(ZCODE_RESOURCES, 'app.asar');
@@ -138,8 +139,9 @@ if (entry.unpacked) {
   fs.readSync(fd, original, 0, originalSize, dataBase + Number(entry.offset));
 }
 
-const tail = `\n;(${badgeSource.toString()})();\n`;
-const patched = Buffer.concat([original, Buffer.from(tail, 'utf8')]);
+const tapTail = `\n;var __tpsEventTapSource=${eventSource.toString()};\n` +
+  `;(${badgeSource.toString()})();\n`;
+const patched = Buffer.concat([original, Buffer.from(tapTail, 'utf8')]);
 
 entry.size = patched.length;
 entry.unpacked = true;
