@@ -70,6 +70,8 @@ for (const [name, t] of Object.entries(themes)) {
   .bubble{max-width:520px;background:var(--color-card);border:1px solid var(--color-border);border-radius:12px;padding:12px 14px;min-height:52px;white-space:pre-wrap}
   .row[data-trajectory-message-role="user"] .bubble{opacity:.9}
   .tool{margin-top:10px;padding:8px 10px;border:1px dashed var(--color-border);border-radius:8px;color:var(--color-foreground-subtle);font-size:12px}
+  .reasoning{margin-bottom:8px;padding:8px 10px;border-left:2px solid var(--color-border);color:var(--color-foreground-subtle);font-size:12px;white-space:pre-wrap}
+  .reasoning-label{font-size:11px;opacity:.6;margin-bottom:4px}
   .label{font-size:11px;color:var(--color-foreground-subtle);margin-bottom:6px}
   .caret{display:inline-block;width:1px;height:14px;background:var(--color-foreground);vertical-align:-2px;animation:blink 1s steps(1) infinite}
   @keyframes blink{50%{opacity:0}}
@@ -91,8 +93,12 @@ for (const [name, t] of Object.entries(themes)) {
         </div>
         <div class="row" data-trajectory-message-role="assistant">
           <div class="bubble" data-trajectory-message-content>
+            <div class="reasoning" data-reasoning-content>
+              <div class="reasoning-label" data-reasoning-label>思考中</div>
+              <span id="reasoning-text"></span>
+            </div>
             <span id="assistant-text"></span><span class="caret"></span>
-            <div class="tool" data-tool-call-id="tool-1"><span id="tool-text">工具输出（不应计数）</span></div>
+            <div class="tool" data-tool-call-id="tool-1"><span id="tool-text">工具调用（应计数）</span></div>
           </div>
         </div>
       </div>
@@ -112,11 +118,13 @@ for (const [name, t] of Object.entries(themes)) {
 <script>(${badge})();</script>
 <script>
   var assistant = document.getElementById('assistant-text');
+  var reasoning = document.getElementById('reasoning-text');
   var sidebar = document.getElementById('sidebar-text');
   var user = document.getElementById('user-text');
   var tool = document.getElementById('tool-text');
 
   window.__appendAssistant = function (text) { assistant.textContent += text; };
+  window.__appendReasoning = function (text) { reasoning.textContent += text; };
   window.__appendSidebar = function (text) { sidebar.textContent += text; };
   window.__appendUser = function (text) { user.textContent += text; };
   window.__appendTool = function (text) { tool.textContent += text; };

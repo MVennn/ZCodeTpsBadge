@@ -31,12 +31,18 @@
 2. 可见的 `[data-v4-timeline-message-layer]`；
 3. 可见的 `[data-v4-composer-dock]` 的父元素。
 
-根内按文本增量统计，排除：
+根内按文本增量统计。**计入**：
+
+- 助手正文；
+- 思考文本（`data-reasoning-content`）；
+- 工具调用块（`data-tool-call-id`），包括调用参数与块内输出
+  （为了让调用阶段也有速度显示，这是已知取舍）。
+
+**排除**：
 
 - 用户消息（`data-v4-user-input-bubble` 等）；
-- 工具调用（`data-tool-call-id`、`data-zcode-tool-stream-animate`）；
 - 输入框、按钮、`contenteditable`、终端、开发者工具；
-- 消息操作按钮、状态标签、时间线头部；
+- 消息操作按钮、状态标签、时间线头部、推理标签（`data-reasoning-label`）；
 - 侧边栏（本来就在聊天区根外）。
 
 **不要**依赖 `data-trajectory-message-role="assistant"`：该属性在真实聊天 DOM 里
@@ -85,7 +91,8 @@
 
 - 只在 Windows + ZCode 桌面版验证；其它 Electron 版本不保证选择器存在。
 - ZCode 升级会替换 `app.asar`，补丁与徽标消失，需要重新 apply。
-- 统计只认聊天区文本；工具输出、侧边栏、设置页不计入。
+- 统计只认聊天区文本；侧边栏、设置页、后台终端不计入。
+- 工具块内的输出也会计入，工具输出很长时速度可能偏高；这是为了在调用阶段也有显示的取舍。
 - 徽标数值受渲染节奏影响，适合观察趋势，不适合做精确 benchmark。
 
 ## 8. 验收清单

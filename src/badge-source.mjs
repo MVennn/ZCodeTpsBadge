@@ -277,10 +277,8 @@ export function badgeSource() {
       '[data-v4-user-input-attachments]',
       '[data-v4-user-input-media-attachments]',
       '[data-trajectory-message-role="user"]',
-      '[data-trajectory-message-role="tool"]',
       '[data-trajectory-message-role="system"]',
-      '[data-tool-call-id]',
-      '[data-zcode-tool-stream-animate]',
+      '[data-reasoning-label]',
       '[data-trajectory-finish-pill]',
       '[data-trajectory-user-call-metadata]',
       '[data-trajectory-user-call-datetime]',
@@ -302,18 +300,12 @@ export function badgeSource() {
 
     const CHAT_ROOT_SELECTOR = '[data-testid="chat-view"], [data-v4-timeline-message-layer]';
     const MESSAGE_MARKER =
-      '[data-v4-user-input-bubble], [data-tool-call-id], [data-trajectory-message-role], [data-v4-topic-messages]';
+      '[data-v4-user-input-bubble], [data-tool-call-id], [data-trajectory-message-role], [data-v4-topic-messages], [data-reasoning-content]';
     let chatRoot = null;
     let rootTotal = 0;
 
     function findChatRoot() {
-      const roots = document.querySelectorAll(CHAT_ROOT_SELECTOR);
-      let fallbackRoot = null;
-      for (const el of roots) {
-        if (!visible(el)) continue;
-        if (!fallbackRoot) fallbackRoot = el;
-        if (el.querySelector(MESSAGE_MARKER)) return el;
-      }
+      // Prefer the composer column: it contains reasoning, tool calls and messages.
       const docks = document.querySelectorAll('[data-v4-composer-dock]');
       let fallbackDockParent = null;
       for (const dock of docks) {
@@ -322,6 +314,13 @@ export function badgeSource() {
         if (!parent) continue;
         if (!fallbackDockParent) fallbackDockParent = parent;
         if (parent.querySelector(MESSAGE_MARKER)) return parent;
+      }
+      const roots = document.querySelectorAll(CHAT_ROOT_SELECTOR);
+      let fallbackRoot = null;
+      for (const el of roots) {
+        if (!visible(el)) continue;
+        if (!fallbackRoot) fallbackRoot = el;
+        if (el.querySelector(MESSAGE_MARKER)) return el;
       }
       return fallbackDockParent || fallbackRoot;
     }

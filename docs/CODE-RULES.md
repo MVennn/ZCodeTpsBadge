@@ -59,13 +59,16 @@ preload 与 CDP 同时存在、页面重载、热更新都靠这两道守卫避�
 规范见 [DESIGN.md](DESIGN.md)。
 
 **规则 2.5 · 只统计聊天区根，并按根总量算增量。**
-统计范围是聊天区根（`[data-testid="chat-view"]` / `[data-v4-timeline-message-layer]` /
-输入框父容器），**不要依赖 `data-trajectory-message-role="assistant"`**——该属性在真实聊天
-DOM 里不总是存在，用了会把计数整个漏掉。侧边栏在根外；用户消息、工具调用、输入框、按钮、
-终端、开发者工具在 `SKIP` 里排除。给根记一个 token 总量，只把增量计入——markdown 流式渲染
-会替换文本节点，按节点长度会把已有内容重复计数。第一次见到新根只记基线；单次新增子树
-超过 400 字符（历史消息 / 整段重渲染）也只更新基线。结算周期 0.35 秒，
-不使用 `setInterval` 轮询整个 DOM。
+统计范围是聊天区根（优先 `[data-v4-composer-dock]` 的父元素，其次
+`[data-testid="chat-view"]` / `[data-v4-timeline-message-layer]`），
+**不要依赖 `data-trajectory-message-role="assistant"`**——该属性在真实聊天
+DOM 里不总是存在，用了会把计数整个漏掉。侧边栏在根外；用户消息、输入框、按钮、
+终端、开发者工具、消息操作 / 状态标签 / 推理标签在 `SKIP` 里排除。
+思考文本（`data-reasoning-content`）与工具调用块（`data-tool-call-id`）计入；
+工具块内输出也会计入，属于为了让调用阶段也有速度显示的取舍。给根记一个 token 总量，
+只把增量计入——markdown 流式渲染会替换文本节点，按节点长度会把已有内容重复计数。
+第一次见到新根只记基线；单次新增子树超过 400 字符（历史消息 / 整段重渲染）
+也只更新基线。结算周期 0.35 秒，不使用 `setInterval` 轮询整个 DOM。
 
 **规则 2.6 · 统计口径固定。**
 CJK 0.6 token/字、其他 0.25 token/字符；EMA 系数 0.6 / 0.4；
