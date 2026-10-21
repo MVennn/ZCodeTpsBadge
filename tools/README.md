@@ -105,7 +105,11 @@ python tools/gen_assets.py
 
 ## ci/check.mjs
 
-仓库检查：语法、Markdown 链接、必需文件、docs 孤儿、资源尺寸、本机路径与密钥。
+仓库检查：语法、Markdown 链接、必需文件、docs 孤儿、资源尺寸、数据源守卫、
+Release 说明形状、本机路径与密钥。数据源守卫会在徽标重新引入字符估算、
+tap 不再调用 `zcode-agent.readSessionDebug` 或 RPC 形状测试失败时变红
+（见 [docs/CODE-RULES.md](../docs/CODE-RULES.md) §2.5/2.9，测试见
+`tools/ci/test-debug-source.mjs`）。
 
 ```bash
 node tools/ci/check.mjs

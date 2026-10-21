@@ -49,62 +49,67 @@ apply 写三样东西：外部 preload、头部备份、头部字段。restore �
 进入时检查 `window.__zcodeTpsBadgeInstalled` 与 `#zcode-tps-badge`；
 preload 与 CDP 同时存在、页面重载、热更新都靠这两道守卫避免重复。
 
-**规则 2.3 · 只读 DOM，不写宿主状态。**
-不修改聊天内容、不调用宿主接口、不拦截事件；徽标节点 `pointer-events: none`。
-统计只读文本长度，不保存文本内容。
+**规则 2.3 · 只读调试数据，不写宿主状态。**
+不修改聊天内容、不拦截事件；徽标节点 `pointer-events: none`。
+唯一允许的宿主调用是 `zcode-agent.readSessionDebug` —— 开发者工具自己每秒也在调
+同一个只读方法。**禁止**调用发送、停止、改模型、改设置等写接口；不转发请求头、
+响应头或消息正文，只保留最后一轮 round 与会话 cache 计数。
 
 **规则 2.4 · 主题只用 CSS 变量 + 降级值。**
 颜色一律 `var(--token, fallback)`，不硬编码绿色 / 黑色 / 白色。
 不依赖只在单一主题下定义的变量（如 `--color-foreground-subtle`）。
 规范见 [DESIGN.md](DESIGN.md)。
 
-**规则 2.5 · 双路计数：事件路优先，DOM 路兜底。**
-事件路（`src/event-source.mjs`）在主世界被动观察 RPC MessagePort，解码会话增量帧
-（`row.delta` / `row.appended` / `row.upserted` / `row.removed`），把字符增量发给徽章；
-**tap 只读不改**——从不清空回调、不改写消息、不解码失败重试，任何异常静默跳过。
-DOM 路（本条以下为原规则）在事件路 4 秒无产出时启用：统计范围是聊天区根
-（优先 `[data-v4-composer-dock]` 的父元素，其次
-`[data-testid="chat-view"]` / `[data-v4-timeline-message-layer]`），
-**不要依赖 `data-trajectory-message-role="assistant"`**——该属性在真实聊天
-DOM 里不总是存在，用了会把计数整个漏掉。侧边栏在根外；用户消息、输入框、按钮、
-终端、开发者工具、消息操作 / 状态标签 / 推理标签在 `SKIP` 里排除。
-思考文本（`data-reasoning-content`）与工具调用块（`data-tool-call-id`）计入；
-工具块内输出也会计入，属于为了让调用阶段也有速度显示的取舍。给根记一个 token 总量，
-只把增量计入——markdown 流式渲染会替换文本节点，按节点长度会把已有内容重复计数。
-第一次见到新根只记基线；单次新增子树超过 400 字符（历史消息 / 整段重渲染）
-也只更新基线。结算周期 0.35 秒，不使用 `setInterval` 轮询整个 DOM。
+**规则 2.5 · 唯一数据源：`session/debug`。**
+徽标的数字只能来自 `zcode-agent.readSessionDebug` 返回的 `rounds[].tokensPerSecond`
+与 `usage`；这与开发者工具「Token 调试」是同一份快照。
+**禁止**重新引入字符估算、DOM 文本统计、EMA 或「事件 delta 换 token」——
+这些路径无法正确处理折叠的思考，也会与面板数字打架。tap 只负责抓 base
+service port、发只读请求、把最后一轮 round + cache 转发给徽章；
+`networkEntries`、请求头、正文字段一律丢弃。
 
-**规则 2.9 · 事件路解码必须容错，格式按 ARCHITECTURE §7 记录。**
-RPC 帧格式（类型字节 / varint / Object JSON / EventFire=204 / conversation 主题 /
-行字段名）的单一正本在 [ARCHITECTURE.md](ARCHITECTURE.md) §7。改 tap 前先读它；
-ZCode 升级后解码失效是预期行为（自动回退 DOM 路），不要为兼容猜格式而放宽解析——
-解码器遇到未知类型字节必须抛错跳过整帧，不能带病输出。跨世界通信只用
-`window.postMessage` 字符串负载（结构化对象不跨隔离世界）。
+**规则 2.6 · TPS 口径照抄面板。**
+`tokensPerSecond = outputTokens ÷ (generationDurationMs / 1000)`，
+`generationDurationMs = durationMs − timeToFirstContentMs`；分子分母都由 agent
+算好，客户端不二次换算。`outputTokens` 含思考 tokens，另有一列
+`reasoningTokens` 只用于展示。provider 没上报的字段显示 `—`，不要用 0 冒充。
+改口径必须同步 [FEATURE-TPS-BADGE.md](FEATURE-TPS-BADGE.md) §4、
+[DESIGN.md](DESIGN.md) 与 [CHANGELOG.md](../CHANGELOG.md)。
 
-**规则 2.6 · 统计口径固定。**
-CJK 0.6 token/字、其他 0.25 token/字符；EMA 系数 0.6 / 0.4；
-空闲判定是「最后一次文本增长后 1.8 秒」，**不要用 EMA 衰减来计时**——
-衰减会让计时器不断续命，表现为停止输出后数字久久不归零。
-改口径必须同步 [DESIGN.md](DESIGN.md) 与 [CHANGELOG.md](../CHANGELOG.md)。
+**规则 2.9 · 请求/响应编解码必须容错，格式按 ARCHITECTURE §7 记录。**
+RPC 帧格式（类型字节 / varint / Object JSON / Promise=100 / PromiseSuccess=201 /
+EventFire=204 / `zcode-agent` 通道 / `readSessionDebug` 方法）的单一正本在
+[ARCHITECTURE.md](ARCHITECTURE.md) §7。改 tap 前先读它；解码器遇到未知类型字节
+必须抛错跳过整帧，不能带病输出。请求 id 用高位段（`1e9+`）避免与 App 的
+ChannelClient 撞号；同一时间只允许一个在途请求。
 
-**规则 2.10 · 后台与批量帧不得污染速率统计。**
-`document.hidden` 期间不结算：rAF 暂停时任何「首帧补算」都会把后台时长计入
-活跃、把平均稀释成 7 tok/s 这种假数。恢复后积压按**当时的 EMA 速率**摊还入
-累计与活跃，最高 / 最低不吸收构造出来的瞬时值。批量判定阈值 `dt × 800`
-与摊还逻辑的正本在 [FEATURE-TPS-BADGE.md](FEATURE-TPS-BADGE.md) §4。
+**不要调用 `port.start()`，也不要抢在 `Initialize(200)` 之前发请求。** 端口启动和
+那一帧属于 App 的 `MessagePortProtocol`；tap 抢先会把 `Initialize` 吃掉，App 的
+ChannelClient 停在 Uninitialized，启动页挂起（2026-10-22 真机事故，重装才恢复）。
+tap 只 `addEventListener`，等到 `[200]` 再轮询，2 秒兜底；`windowKind=update-status`
+的窗口直接跳过。CI 会检查源码里没有 `servicePort.start(`。
+`__tpsEventTapSource` 是 patch.mjs 绑定的**函数对象**：注入前必须
+`'(' + fn.toString() + ')()'` 序列化并调用，直接传函数源代码只会声明函数、
+调试轮询静默不工作（0.2.0–0.2.2 的教训）。
+
+**规则 2.10 · 失败要 fail-closed，不要 fallback 到估算。**
+`session/debug` 超时（4s）、返回 202 / 203、通道名变化时，徽标显示 `—` 并在悬停卡
+标记「数据源不可用」；连续失败退避 5 秒。**不要**在失败时切回字符估算：
+那会把「估算值」伪装成「usage」，比不显示更糟。窗口隐藏时暂停轮询，恢复可见立即补一次。
 
 **规则 2.7 · 徽标挂在宿主工具条里，不固定悬浮。**
 只插入 `[data-composer-trailing-actions]` 的第一个子节点，随 flex 布局重排；
 工具条出现前**不注入**（禁止 fixed 兜底，否则启动时先闪一下右下角）。
 React 重渲染会移除注入节点，必须检测 `host.isConnected` 并重新挂载
-（MutationObserver + 每 60 帧兜底）。用 `ResizeObserver` 观察输入框容器宽度，
-按 <600 / <480 / <360 三档收缩（隐藏圆点 → 隐藏单位 → 缩小字号）。
+（每 60 帧兜底；0.3.0 去掉了计数用的 MutationObserver，不要再挂整树观察器）。
+用 `ResizeObserver` 观察输入框容器宽度，按 <600 / <480 / <360 三档收缩
+（隐藏圆点 → 隐藏单位 → 缩小字号）。
 
-**规则 2.8 · 悬停卡挂在聊天区根外。**
-`#zcode-tps-tip` 必须挂在 `document.documentElement` 下，避免被计数观察器统计；
+**规则 2.8 · 悬停卡只读快照。**
+`#zcode-tps-tip` 挂在 `document.documentElement` 下，避免被页面布局裁切；
 卡片 `pointer-events:none`，不挡鼠标；位置按徽标 rect 计算并夹在视口内。
-统计值只从 tick 的 `instant` 累计（样本 / tokens / 活跃时长 / 最高 / 最低），
-不在 DOM 里反推。
+九行数值全部来自最近一次 snapshot（本轮 round + 会话 cache），不在 DOM 里反推，
+也不在徽标侧累计历史。
 
 ## 3. 脚本与路径
 
@@ -146,7 +151,8 @@ apply 默认拒绝在 ZCode 运行时写入；`--force` 是显式选择，且只
 7. 徽标与 tap 函数仍无外部引用、可 `toString()`？（§2.1）
 8. 幂等守卫还在（徽章 + tap 各一道）？（§2.2）
 9. 颜色全部走主题变量 + 降级值？（§2.4）
-10. 统计口径改动同步了 DESIGN / CHANGELOG？（§2.6）
-11. tap 仍然只读、容错、跨世界只用 postMessage？（§2.5/2.9）
-12. 入口脚本没有写死项目目录？（§3.1）
-13. 三层验证跑过，真机状态说清楚了？（§4.1/4.2）
+10. 数字仍然只来自 `session/debug`，没有字符估算回退？（§2.5/2.6）
+11. tap 仍然只读、同一时间一个在途请求、跨世界只传 round + cache？（§2.3/2.9）
+12. 失败时是 fail-closed（显示 — / 数据源不可用），没有偷偷估算？（§2.10）
+13. 入口脚本没有写死项目目录？（§3.1）
+14. `tools/ci/test-debug-source.mjs` 与三层验证跑过，真机状态说清楚了？（§4.1/4.2）

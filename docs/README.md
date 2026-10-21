@@ -26,7 +26,7 @@
 | [VERSIONING.md](VERSIONING.md) | 版本命名：三段式进位规则与 tag 约定 |
 | [MAINTENANCE.md](MAINTENANCE.md) | 维护手册：ZCode 升级恢复、资源重建、仓库卫生 |
 | [NAMING.md](NAMING.md) | 文案与命名：产品名、徽标文案、统计标签、提交信息 |
-| [CODE-RULES.md](CODE-RULES.md) | 编码纪律：补丁 / 还原成对、等长头部、根范围计数、悬停卡 |
+| [CODE-RULES.md](CODE-RULES.md) | 编码纪律：补丁 / 还原成对、等长头部、只读 debug 数据源、fail-closed、悬停卡 |
 | [REPO-STANDARD.md](REPO-STANDARD.md) | 仓库规范：目录、README 骨架、assets、CI、Issue 模板 |
 | [DOC-RULES.md](DOC-RULES.md) | 文档规则：分类、单一正本映射、链接纪律、变更矩阵 |
 | [TOOLS-DOC-RULES.md](TOOLS-DOC-RULES.md) | tools/ 规则：脚本 usage 头、路径探测、README 索引 |

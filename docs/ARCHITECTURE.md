@@ -70,11 +70,17 @@ ZCode.exe
        └─ out/preload/index.cjs 标记为 unpacked
             └─ 读取 resources/app.asar.unpacked/out/preload/index.cjs
                  └─ 末尾依次执行：
-                      1. __tpsEventTapSource 绑定 tap 源码（patch.mjs 预先序列化）
+                      1. var __tpsEventTapSource = function eventSource(){…}（函数对象）
                       2. 徽标 IIFE 在 renderer（隔离世界）执行
-                           ├─ installTap()：webFrame.executeJavaScript 把 tap 注入主世界
+                           ├─ installTap()：把函数 toString() 包装成 `(…)()` 调用，
+                           │  再经 webFrame.executeJavaScript 注入主世界；
+                           │  主世界抓 base service port，每秒轮询 session/debug
                            └─ 监听 DOM，在输入框工具条渲染 #zcode-tps-badge
 ```
+
+> **坑**：`__tpsEventTapSource` 是**函数对象**，不是字符串。直接把它交给
+> `executeJavaScript` 只会声明函数、不会执行，调试轮询会静默失效（0.2.0–0.2.2
+> 就是这样）。`installTap()` 必须先 `'(' + fn.toString() + ')()'`。
 
 徽标脚本的启动条件（`src/badge-source.mjs`）：
 
@@ -111,71 +117,96 @@ ZCode.exe
 
 ## 7. 运行时数据流
 
-徽章有两条计数路径：**事件路**（主）与 **DOM 路**（兜底）。事件路 4 秒内有产出时
-只用事件路；否则回到 DOM 路。
+0.3.0 起只有一条数据路：主世界 tap 通过 base service port 调用
+`zcode-agent.readSessionDebug`，读取开发者工具「Token 调试」的同一份快照。
+不再解码会话行文本，也不按 DOM 字符估算。
 
-### 7.1 事件路（`src/event-source.mjs`）
+### 7.1 服务端口与 `session/debug`
 
-ZCode（desktop@2.x）的聊天流不走渲染层 HTTP：宿主进程（utilityProcess）通过
-`MessageChannelMain` 给渲染层一个端口（窗口消息 `zcode:service-port`），会话增量以
-**二进制 RPC**（VSCode 式 VSBuffer marshalling）在该端口上以 `EventFire`(204) 帧下发：
+ZCode（desktop@2.x）的渲染层与宿主进程之间是一条 **MessagePort 二进制 RPC**
+（VSCode 式 VSBuffer marshalling）。主进程把端口作为 `zcode:service-port`
+窗口消息交给渲染层，preload 再转发给主世界：
 
 ```
 宿主进程 (utilityProcess)
-  └─ MessagePort (端口消息 = 一个 VSBuffer)
-       └─ [marshalled 数组: [204, requestId, …]] + [marshalled 载荷]
-            └─ 载荷 = { topic:"conversation/<sid>",
-                        payload:{ kind, deltas:[{op, rowId, append, path, row…}] } }
+  └─ MessagePort（端口消息 = 一个 VSBuffer）
+       ├─ 请求：[100, requestId, channelName, method] + [args 数组]
+       ├─ 响应：[201, requestId] + result / [202, requestId] + error
+       └─ 事件：[204, requestId] + {topic:"conversation/<sid>", payload:{deltas:[…]}}
 ```
 
 marshalling 类型字节：`0` Undefined / `1` String / `2` Buffer / `3` VSBuffer /
 `4` Array / `5` Object(JSON，Uint8Array 转 base64) / `6` Int；
 String/Object 等前缀 LEB128 varint 长度。
 
-tap 注入主世界（`webFrame.executeJavaScript`，见 §5 链路），包装
-`MessagePort.prototype.addEventListener` 与 `onmessage` setter，为每个端口挂一个
-**被动**监听器：解码 `EventFire` 帧，凡 `topic` 以 `conversation/` 开头：
+tap 注入主世界（`webFrame.executeJavaScript`，见 §5 链路），做三件事：
 
-- `row.delta` → `append.length` 即为字符增量；
-- `row.appended` / `row.upserted` → 按行记录文本长度基线，只发差值；
-- `row.removed` → 清理基线。
+1. 监听窗口消息 `zcode:service-port`，抓住 base 端口（带 `databaseStartupId`）；
+2. 收到宿主 `Initialize(200)` 后，每秒发一次只读请求：
+   `[100, id, "zcode-agent", "readSessionDebug"]` + `[[{workspacePath,
+   workspaceIdentity?, sessionId}]]`；
+3. 把 `[201, id]` 的 `rounds` 最后一轮与 `cache` 经 `window.postMessage` 交给徽章。
 
-行文本取 `row.text`（assistantText / reasoning）或 `row.state.input` / `row.inputText`
-（toolCall）。字符增量经 `window.postMessage`（可跨隔离世界）交给徽章，徽章按 §4
-口径换算 token。**tap 从不改写消息、不拦截宿主调用，解码失败静默跳过。**
+> **启动握手（2026-10-22 真机事故）**：tap 只 `addEventListener`，**绝不调用
+> `port.start()`**。宿主在 ChannelServer 创建时把 `Initialize(200)` 排在端口队列里；
+> App 的 `MessagePortProtocol` 负责 `start()` 并把这一帧交给 `ChannelClient`。
+> tap 抢先 `start()` / 轮询会把这一帧先吃掉，App 停在 Uninitialized，启动页一直等
+> ——真机上卡启动页，重装 ZCode 才恢复。tap 等到 `[200]` 后才开始轮询，2 秒没等到
+> 则兜底；`windowKind=update-status` 的窗口直接跳过，不碰它的端口。
 
-### 7.2 DOM 路（`src/badge-source.mjs`，兜底）
+`workspacePath` / `workspaceIdentity` 的优先级：同一会话的
+`zcode:scoped-service-port` 消息（若该会话有）→ 窗口 URL 的
+`initialWorkspacePath` → tap 在出站请求里嗅到的值。主聊天窗口通常走 URL；远程 /
+侧聊会话走 scoped 元数据或嗅探。`sessionId` 取可见聊天容器的
+`[data-session-id]`（跳过 `draft`）；没有时回退到最近一个 `conversation/<sid>`
+主题。请求同一时间最多一个在途，超时 4 秒、失败退避 5 秒，窗口隐藏时暂停。
+
+`rounds` 由 agent 在 `model_request_completed` 事件上生成，只收
+`querySource = "main_turn"`，并计算：
 
 ```
-聊天区根（[data-testid="chat-view"] / [data-v4-timeline-message-layer] / 输入框父容器）
-  └─ MutationObserver 判断变更是否落在根内（characterData / addedNodes）
-       └─ 根内所有非跳过文本的 token 总量
-            └─ 与上次总量比较，只把增量计入
-                 └─ 每 0.35 秒结算一次瞬时速率
-                      └─ EMA（0.6 / 0.4）平滑
-                           └─ 渲染：>=100 取整，否则 1 位小数
-                                └─ 最后一次文本增长后 1.8 秒 → 归零，显示 — tok/s
+generationDurationMs = durationMs - timeToFirstContentMs
+tokensPerSecond      = outputTokens ÷ (generationDurationMs / 1000)
 ```
 
-每次 `instant >= 0.05` 的结算同时累计：样本数、tokens、活跃时长、最高 / 最低瞬时速度；
-悬停卡直接读取这些值，不在 DOM 里反推。
+这正是开发者工具表里的 `TPS (tokens/s)`。思考 tokens 来自 provider 的
+`usage.reasoningTokens`，包含在 `outputTokens` 里；tap 不需要读取任何思考文本。
 
-**统计范围是聊天区根，不依赖 `data-trajectory-message-role="assistant"`。**
-该属性在真实聊天 DOM 里不总是存在，用它会把计数整个漏掉。根优先取输入框所在的主聊天列
-（`[data-v4-composer-dock]` 的父元素），它能同时包住思考块、工具块和消息；
-没有时退回 `chat-view` / 时间线。侧边栏在根外；用户消息、输入框 / 按钮 / 终端 /
-开发者工具、消息操作按钮 / 状态标签 / 推理标签在 `SKIP` 里排除。
-思考文本（`data-reasoning-content`）与工具调用块（`data-tool-call-id`）计入；
-思考行折叠时正文不在 DOM，这条路径因此数不到折叠的思考——事件路补上了这个洞。
+`networkEntries`（含请求头 / 响应头）、请求消息正文都不转发；跨世界只传最后一轮
+round 与会话 cache 计数。
 
-**按根总量算增量，不按文本节点算长度。** markdown 流式渲染会替换文本节点，
-按节点长度会把已有内容重复计数；这里给聊天区根记一个 token 总量，
-只把「这次比上次多出来的部分」计入。第一次见到新根只记录基线；
-单次新增子树超过 400 字符（历史消息 / 整段重渲染）也只更新基线、不计入。
+### 7.2 事件帧只用于「生成中」
 
-跳过区域：`textarea`、`input`、`button`、`contenteditable`、聊天输入框、
-输入框工具条、后台 bash / 终端 / 开发者工具面板、用户消息、推理标签、
-消息操作按钮与状态标签，见 `SKIP` 选择器。
+tap 仍然解码 `EventFire`(204) 帧，但只判断两件事：
+
+- `topic` 以 `conversation/` 开头，且 `payload.deltas` 非空 → 任务仍在活动，
+  每 250ms 最多发一次 `{kind:"activity"}`；
+- 记录最近的 `conversation/<sid>`，作为 `sessionId` 的 DOM 回退。
+
+不再维护行文本长度基线、CJK 字数或 `COUNTED_PATHS`。任何行增量（正文、思考、
+工具参数、工具输出）都只说明「还在跑」，不产生 token 数。
+
+### 7.3 徽标渲染
+
+```
+zcode-tps-debug 消息
+  ├─ snapshot → lastRound / cache / roundCount
+  │    ├─ 数值 = lastRound.tokensPerSecond（>=100 取整，否则 1 位小数）
+  │    ├─ 悬停卡 = 本轮 usage + 会话 cache
+  │    └─ roundCount 增加 → 上一请求已完成，generating = false
+  ├─ activity → generating = true，圆点脉冲；2 秒无活动 → false
+  └─ error    → 显示 —，悬停状态「数据源不可用」
+```
+
+生成中数字保持上一轮；没有完成请求时显示 `— tok/s`。tap 安装失败或 RPC 形状变化
+时，徽标 12 秒后标记「未收到调试数据」，不会退回字符估算。
+
+### 7.4 兼容与失败
+
+`session/debug` 是 ZCode 的内部接口。宿主改通道名、方法名或帧格式时，tap 的请求
+会超时或收到 `202`，徽标显示「数据源不可用」。这是有意的 fail-closed：
+不把估算值冒充 usage。`tools/ci/test-debug-source.mjs` 用假 MessagePort 固定了
+请求形状、快照转发、活动信号与错误路径；升级 ZCode 后先跑它。
 
 ## 8. 主题继承
 
@@ -218,7 +249,7 @@ ELECTRON_RUN_AS_NODE=1 ./ZCode.exe -e "const fs=require('fs');const b=fs.readFil
 
 | 文件 | 职责 |
 |---|---|
-| `src/badge-source.mjs` | 徽标全部逻辑与样式；双路计数；无依赖、可序列化 |
+| `src/badge-source.mjs` | 徽标全部逻辑与样式；消费 debug 快照；无依赖、可序列化 |
 | `src/event-source.mjs` | 主世界事件 tap：解码 RPC 端口会话帧；无依赖、可序列化 |
 | `src/patch.mjs` | 应用 / 重建补丁；干跑；`--force` |
 | `src/restore.mjs` | 还原头部并删除外部 preload |

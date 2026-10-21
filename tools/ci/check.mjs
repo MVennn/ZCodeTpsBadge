@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Repository checks: syntax, links, required files, docs orphans, asset sizes,
-// personal paths and obvious secrets.
+// stats guards, release-note shape, personal paths and obvious secrets.
 //
 //   node tools/ci/check.mjs
 
@@ -153,7 +153,63 @@ if (!social || social.width !== 1280 || social.height !== 640) {
 }
 pass('assets: logo 512x512, social 1280x640');
 
-// 6. Release notes shape
+// 6. Data-source guard
+// 0.3.0 replaced character estimation with the same session/debug snapshot the
+// Developer Tools panel polls. Keep the source of truth pinned: the badge must
+// consume `zcode-tps-debug`, and the tap must call the agent channel.
+const badgeSrc = fs.readFileSync(path.join(ROOT, 'src/badge-source.mjs'), 'utf8');
+for (const [needle, why] of [
+  ['zcode-tps-debug', 'debug snapshot message source'],
+  ['tokensPerSecond', 'provider-computed TPS from session/debug'],
+  ['reasoningTokens', 'reasoning usage surfaced in the tooltip'],
+  ['lastRoundPlausible', 'ignore implausible current-round TPS'],
+  ['d.plausible', 'read the tap plausibility flag'],
+  ["typeof __tpsEventTapSource === 'function'", 'event tap install path must invoke the bound function']
+]) {
+  if (!badgeSrc.includes(needle)) {
+    fail('source', `src/badge-source.mjs: missing ${why} (${needle})`);
+  }
+}
+for (const needle of ['estimateTokens', 'RATE_CAP', 'NOMINAL_RATE', 'domStale', "src: 'zcode-tps-event'"]) {
+  if (badgeSrc.includes(needle)) {
+    fail('source', `src/badge-source.mjs: character-counting remnant ${needle}`);
+  }
+}
+const tapSrc = fs.readFileSync(path.join(ROOT, 'src/event-source.mjs'), 'utf8');
+for (const [needle, why] of [
+  ['zcode-agent', 'host channel name'],
+  ['readSessionDebug', 'Developer Tools data method'],
+  ['zcode:service-port', 'base service port capture'],
+  ['encodeFrame', 'request encoder'],
+  ["kind: 'activity'", 'generation activity signal'],
+  ['update-status', 'skip the update/startup window'],
+  ['type === 200', 'wait for the host Initialize frame'],
+  ['!portReady', 'do not poll before Initialize'],
+  ['isPlausibleRound', 'filter implausible TPS rounds from stats'],
+  ['MAX_PLAUSIBLE_TPS', 'TPS outlier cap'],
+  ['plausible:', 'forward the current-round plausibility flag']
+]) {
+  if (!tapSrc.includes(needle)) {
+    fail('source', `src/event-source.mjs: missing ${why} (${needle})`);
+  }
+}
+for (const needle of ['COUNTED_PATHS', 'estimateTokens', 'countCjk']) {
+  if (tapSrc.includes(needle)) {
+    fail('source', `src/event-source.mjs: character-counting remnant ${needle}`);
+  }
+}
+if (/servicePort\.start\s*\(/.test(tapSrc)) {
+  fail('source', 'src/event-source.mjs: must not start the service port (steals Initialize)');
+}
+const rpcTest = spawnSync(process.execPath, [path.join(ROOT, 'tools/ci/test-debug-source.mjs')], {
+  encoding: 'utf8'
+});
+if (rpcTest.status !== 0) {
+  fail('source', `tools/ci/test-debug-source.mjs failed\n${(rpcTest.stderr || rpcTest.stdout || '').trim()}`);
+}
+pass('source guard: session/debug only, RPC shape test');
+
+// 7. Release notes shape
 // 口径正本见 docs/release-notes/README.md：清单，不是文章。
 const notesDir = path.join(ROOT, 'docs/release-notes');
 const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
@@ -177,7 +233,7 @@ for (const name of noteFiles) {
 }
 pass(`release notes: ${noteFiles.length} files, shape + fixed tail`);
 
-// 7. Personal paths / secrets
+// 8. Personal paths / secrets
 const skip = new Set(['tools/ci/check.mjs', 'config.local.json', 'PROGRESS.md']);
 const textExtensions = /\.(md|mjs|js|json|cmd|vbs|py|yml|yaml|txt|svg|gitignore|gitattributes)$/;
 const personalName = 'Sans' + 'K';

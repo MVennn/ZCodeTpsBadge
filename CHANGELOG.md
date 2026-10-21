@@ -4,7 +4,139 @@
 
 ---
 
-## [未发布] — 2026-10-21
+## [未发布] — 2026-10-22
+
+### 改用开发者工具同源的 `session/debug`（0.3.0）
+
+**症状**：思考阶段的 token 仍然不显示。0.2.0–0.2.2 连修两轮事件路，折叠的思考
+还是不进统计；同时徽标的实时数字与开发者工具「Token 调试」对不上。
+
+**根因**：徽标一直在用「字符增量估 token」。这条路要求解码会话行文本，而思考行
+折叠时正文不在 DOM，事件路又依赖一条不稳定的内部帧；即使解码成功，估算值与
+provider usage 也永远对不上。开发者工具根本没有做字符估算——它读的是 agent
+在 `model_request_completed` 上记录的 usage 快照。
+
+**改法**：
+
+- tap 改为抓住 base service port（`zcode:service-port`），每秒调用一次
+  `zcode-agent.readSessionDebug({workspacePath, workspaceIdentity?, sessionId})`；
+  这是开发者工具「Token 调试」自己的只读接口。
+- 徽标只消费快照里的最后一轮 `round`、会话 `cache` 与 tap 现算的速度统计。
+  TPS 直接用 `tokensPerSecond = outputTokens ÷ generationDurationMs`，与面板同口径；
+  思考 tokens 来自 `usage.reasoningTokens`，不再依赖页面文本。
+- 悬停卡新增平均 / 最高 / 最低 tok/s：tap 从 `rounds` 里取
+  `tokensPerSecond > 0` 的轮次，算术平均 / 最大 / 最小，最多最近 200 轮（与面板
+  表格一致）；移除平均命中（开发者工具摘要里已有）。
+- 生成中只让圆点脉冲，数字保持上一轮；请求完成后下一次轮询更新。
+- 删除字符估算、DOM 文本统计、EMA、批量摊还、最高 / 最低 / 活跃等全部旧路径；
+  删除计数用的整树 MutationObserver。
+- 失败 fail-closed：超时 / 202 / 通道改名时显示 `—`，悬停状态「数据源不可用」，
+  连续失败退避 5 秒；**不退回字符估算**。
+- `tools/ci/test-debug-source.mjs`：假 MessagePort 固定请求形状、快照转发、
+  活动信号与错误路径；CI 增加数据源守卫，禁止字符估算残留。
+
+**验证**：
+
+- `node tools/ci/test-debug-source.mjs` 通过：请求帧为
+  `[100, id, "zcode-agent", "readSessionDebug"] + [[{workspacePath, sessionId}]]`，
+  201 快照只转发 round + cache + stats（两轮 TPS 20 / 40 → avg 30 / max 40 /
+  min 20），204 帧产生 activity，202 产生 error。
+- `node tools/ci/check.mjs` 全绿（syntax 11 / required 33 / links 133 / docs 13 /
+  source guard）。
+- `node src/patch.mjs` 干跑：原始 781611 → 811601 字节。
+- 真机效果待完全退出 ZCode 再启动后确认（本会话无法重启宿主）。
+
+### 修复异常 TPS 带偏平均 / 最高（2026-10-22）
+
+**症状**：开发者工具某一轮显示 `388 output / 64,666.7 tok/s`（输入 612,799、
+缓存命中 612,608、命中率 100%）；徽标的平均 / 最高速度随之被带炸。
+
+**根因**：面板 TPS 的分母是 `durationMs − timeToFirstContentMs`。缓存命中 /
+上下文压缩类请求可能把这两个时间报得几乎相等（该轮只剩 **6ms**），
+`388 ÷ 0.006 = 64,666.7`。这是计时口径的异常值，不是真实生成速度；面板不过滤，
+徽标又直接采用面板的 `tokensPerSecond`，于是平均 / 最高被污染。
+
+**改法**：
+
+- tap 新增 `isPlausibleRound`：`tokensPerSecond > 2000` 或
+  `generationDurationMs < 100ms` 视为异常，不计入平均 / 最高 / 最低。
+- snapshot 增加 `plausible` 标志；最后一轮异常时徽标显示 `—`，悬停状态
+  「本轮 TPS 异常（已跳过）」。
+- 测试 snapshot 增加第三轮 `64,666.7 tok/s / 6ms`，断言 stats 仍为
+  `avg 30 / max 40 / min 20` 且 `plausible=false`；CI 增加 `isPlausibleRound`
+  与 `lastRoundPlausible` 守卫。
+
+**验证**：RPC 测试与 `node tools/ci/check.mjs` 全绿；真机待完全重启确认。
+
+### 修复启动页卡住（0.3.0 真机事故，2026-10-22）
+
+**症状**：0.3.0 补丁应用后完全重启，ZCode 卡在启动页不动；重装 ZCode 才恢复。
+
+**根因**：主世界 tap 在收到 `zcode:service-port` 窗口消息时抢先调用
+`port.start()` 并立即发 `readSessionDebug`。宿主在 ChannelServer 创建时把
+`Initialize(200)` 排在端口队列里，本应由 App 的 `MessagePortProtocol` 在
+`start()` 后交给 `ChannelClient`；tap 抢先启动/轮询会先把这一帧消费掉，App 的
+ChannelClient 停在 Uninitialized，启动页一直等服务初始化。
+
+**改法**：
+
+- tap 只 `addEventListener`，**不调用 `port.start()`**；由 App 自己启动端口。
+- 收到 `Initialize(200)` 后才开始轮询；2 秒没等到则兜底。
+- `windowKind=update-status` 的启动 / 更新窗口直接跳过，不碰它的端口。
+- `tools/ci/test-debug-source.mjs` 新增：tap 不得 start、Initialize 前不得发请求、
+  update-status 窗口不得安装 tap；CI 增加 `servicePort.start(` 禁令。
+
+**验证**：RPC 测试与 `node tools/ci/check.mjs` 全绿；补丁已重新应用
+（781611 → 811601 字节，外部文件与 Electron asar 实读一致）；**真机待完全重启确认**。
+
+### 修复「最高 1 万 tok/s」假峰与事件路未安装（2026-10-21 深夜）
+
+**症状**：悬停统计卡的「最高」仍会出现 10000 tok/s 级别的数；徽标本身也会闪一下
+同样离谱的瞬时值。重启 0.2.2 后还暴露了两个更基础的问题：**没有当前速度**、
+**思考不记录 token**。0.2.1 的补丁确已生效（外部 preload 805930 字节，
+含 `counted > cap && ema > 0`）。
+
+**根因**（四处，前三处叠加假峰，第四处让事件路完全没生效）：
+
+0. **事件路从 0.2.0 起就没装上过。** `patch.mjs` 把 `__tpsEventTapSource` 绑成
+   **函数对象**（`var X=function eventSource(){…}`），而 `installTap()` 只接受
+   字符串，函数分支又引用了从未定义的 `eventTapSource`，于是 `tap === null`，
+   每次启动都静默放弃。实际一直只有 DOM 兜底：思考折叠时正文不在 DOM → 不计数；
+   没有可见正文时 → 当前速度为空；工具输出与整段重渲染又都从 DOM 进统计。
+1. 批量守卫依赖 `ema > 0`。空闲 1.8 秒后 EMA 归零，而工具输出 / 整行 upsert
+   恰好在这时到达；一次结算 6000 token ÷ 0.35 秒 = 17000 tok/s，直接写进「最高」。
+2. 事件路活跃时 DOM 路只跳过计数、不更新聊天区根基线。事件路停 4 秒切回 DOM 路时，
+   事件路已经计过的整段正文被第二次计入；因为 EMA 已归零，又被当成瞬时速度。
+3. 事件路把 `row.delta` 的所有 path 都计入，包括 `output.text`（工具输出，整块到达）
+   与 `summaryText`（子代理）；实测工具输出是最大的批量来源之一。另外行基线只按
+   `rowId` 索引，不同会话的同名 `rowId` 会串线。
+
+**改法**：
+
+- `installTap()` 识别函数形式的 `__tpsEventTapSource`，用
+  `'(' + fn.toString() + ')()'` 序列化并**调用**后再交给 `webFrame.executeJavaScript`；
+  字符串形式继续支持。CI 增加守卫，防止只剩字符串分支。
+- 批量判定改为只看 `counted > dt × 800`，与 EMA 是否为 0 无关；批量帧只入累计与
+  活跃（活跃按当时 EMA 重建，EMA 为 0 时用本次运行平均，再无历史用 40 tok/s），
+  不刷新当前值、不入最高 / 最低。
+- 事件路活跃期间把 DOM 基线标脏；切回 DOM 路的第一次变更先重读根总量再计数。
+- 事件路只计 `text` / `inputText`；基线按会话主题分开；`row.removed.fromRowId`
+  按数字处理（线格式是 number，原来按 string 判断，永远匹配不上）。
+- DOM 兜底不再统计工具块（`data-tool-call-id`）：块内参数与工具输出混在一起，
+  工具输出会持续抬高最高值与累计；工具参数改由事件路精确计入。
+- 事件路按 CJK 字数与总字符数分别上报，徽章用与 DOM 路相同的 0.6 / 0.25 系数换算
+  （原来固定 0.25，中文速度低报约 2.4 倍）。
+- 删除从未被触发的 `usage` 消息分支（tap 不发它，且换算系数与统计口径不一致）。
+
+**验证**：
+
+- 按 `patch.mjs` 的真实绑定方式复现：函数对象 → `toString()` → 调用，
+  确认主世界 `window.__zcodeTpsEventTap === true`，tap 安装成功。
+- 结算逻辑仿真（10 秒 @40 tok/s 流式 → 3 秒空闲 → 8400 token 批量交接）：
+  旧逻辑最高 20000 tok/s、平均 705；新逻辑最高 40.1、平均 40.1、累计无重复。
+- 事件路合成帧用例 9 条全通过：优化输出排除、参数计入、跨主题 rowId 隔离、
+  整行 upsert 只计差值、数字 `fromRowId`、子代理摘要排除。
+- 补丁重建 + 三层验证；真机需完全退出 ZCode 再启动后确认。
 
 ### 门面统一批次（2026-10-21）
 

@@ -6,7 +6,7 @@
 
 **给 ZCode 桌面版聊天界面加一个胶囊形 `tok/s` 徽标**
 
-流式输出时看速度，空闲时安静地待在输入框工具条里。
+每轮请求结束后看真实速度，生成中只让圆点脉冲，空闲时安静地待在输入框工具条里。
 
 ![CI](https://github.com/MVennn/ZCodeTpsBadge/actions/workflows/ci.yml/badge.svg) ![源码仓库](https://img.shields.io/badge/源码仓库-GitHub-181717?logo=github&logoColor=white) ![问题反馈](https://img.shields.io/badge/问题反馈-Issues-181717?logo=github&logoColor=white) ![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6?logo=windows&logoColor=white) ![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&logoColor=white) ![License](https://img.shields.io/badge/License-MIT-blue)
 
@@ -16,11 +16,11 @@
 
 ## 这是什么
 
-在 ZCode 桌面版聊天页的输入框底部工具条里，注入一个胶囊形徽标：模型还在输出时显示估算的 `tok/s`，停下来就变回 `— tok/s`。
+在 ZCode 桌面版聊天页的输入框底部工具条里，注入一个胶囊形徽标：每个请求结束后显示这一轮真实输出的 `tok/s`，生成中圆点脉冲、数字保持上一轮。
 
-鼠标悬停能看到本次运行的统计：当前、平均、最高、最低、累计 tokens、活跃时长。
+数据来自开发者工具里「Token 调试」的同一份快照：每轮请求的输入 / 输出 / 思考 / 缓存 tokens 与 `tokensPerSecond` 都直接取模型返回的 usage，**不做字符估算**，所以思考折叠时也照样计入。
 
-计数走两条路：主路径被动观察 ZCode 内部事件流拿真实字符增量（**思考行折叠时也能测**），兜底才按页面文本估算。它只读不写：不上传任何数据、不修改模型请求。徽标上的数值是按字符估算的，不是模型返回的精确 usage。
+鼠标悬停能看到本轮速度、平均 / 最高 / 最低速度、输出 / 思考 tokens、输入、缓存命中、生成耗时，以及会话的请求数与累计输入 / 命中。它只读不写：不上传任何数据、不修改模型请求。
 
 ## 环境要求
 
@@ -36,7 +36,7 @@
 1. 从**托盘图标**完全退出 ZCode —— 点窗口 X 只是收进托盘，进程还在，补丁不会生效。
 2. 双击 `tools\apply.cmd`，看到 `Applied` 和 `verified: unpacked=true`。
 3. 按平时的方式启动 ZCode。
-4. 输入框底部工具条出现胶囊徽标；发一段消息，它就会跳起来。
+4. 输入框底部工具条出现胶囊徽标；发一段消息，请求完成后显示这一轮的速度。
 
 命令行等价：
 
@@ -48,10 +48,10 @@ ZCode 正在运行又不想退出时加 `--force`，补丁会立即写入，但�
 
 ## 效果
 
-- 流式输出时显示 `42.1 tok/s`（超过 100 取整），停下来约 1.8 秒后变回 `— tok/s`
+- 每轮请求完成后显示 `42.1 tok/s`（超过 100 取整）；生成中圆点脉冲，数字仍是上一轮的
 - 徽标固定在输入框工具条里、用量左侧，窗口变窄时自动收缩；深浅主题都适配
-- 只统计聊天区里增长的文本，输入框、侧边栏、用户消息、终端不计入
-- 鼠标悬停可看本次运行的统计
+- 思考 tokens 由模型 usage 直接给出；不按页面文本、输入框、侧边栏或终端估算
+- 鼠标悬停可看本轮速度、本轮 tokens 与会话累计命中率
 
 统计口径、挂载位置与收缩档位见 [功能专项：tok/s 徽标](https://github.com/MVennn/ZCodeTpsBadge/blob/main/docs/FEATURE-TPS-BADGE.md)。
 
@@ -82,8 +82,8 @@ ZCode 正在运行又不想退出时加 `--force`，补丁会立即写入，但�
 
 - 非官方项目，与 ZCode 官方及其关联方无任何隶属、合作、授权或支持关系
 - 会修改本地 ZCode 安装目录里的 `app.asar`；ZCode 升级会覆盖补丁，需要重新应用
-- 徽标数值是按字符估算的，不是模型返回的精确 usage，不用于计费或性能结论
-- 不收集、不上传任何数据，不修改模型请求；事件计数是被动观察，不改变应用行为
+- 徽标数值取自 ZCode 开发者工具同源的 `session/debug` 快照（模型 usage），不用于计费或性能结论
+- 不收集、不上传任何数据，不修改模型请求；只读调试快照，每秒最多一次查询
 - 使用本项目产生的任何后果由使用者自行承担
 
 「ZCode」商标、标识的权利均归其权利人所有。本项目与之不存在任何隶属、合作、授权、认可或支持关系。

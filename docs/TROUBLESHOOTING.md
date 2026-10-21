@@ -24,7 +24,8 @@ ls "$(node src/which.mjs resources)/app.asar.unpacked/out/preload/index.cjs"
 | 徽标根本没出现 | 只关了窗口没退托盘，preload 没重新加载 | [§1](#1-徽标完全不显示) |
 | ZCode 升级后徽标消失 | `app.asar` 被换掉了，需要重新 apply | [§1](#1-徽标完全不显示)、[§7](#7-升级后徽标消失) |
 | 设置页等界面没有徽标 | 输入框工具条还没渲染，属预期 | [§1](#1-徽标完全不显示) |
-| 一直是 `— tok/s` | 没数到聊天区里的文本增长 | [§2](#2-一直是-toks) |
+| 一直是 `— tok/s` | 还没有完成的主轮请求，或调试数据没读到 | [§2](#2-一直是-toks) |
+| 悬停显示「数据源不可用」 | `session/debug` 通道/方法变了或 tap 没装上 | [§2](#2-一直是-toks) |
 
 ## 1. 徽标完全不显示
 
@@ -55,17 +56,26 @@ node --check "$(node src/which.mjs resources)/app.asar.unpacked/out/preload/inde
 
 **步骤**
 
-- 让模型输出一段长文本，观察是否出现数值。
-- 确认页面是主聊天页（`location.pathname` 以 `index.html` 结尾），不是独立窗口或 DevTools。
+1. 先发一条消息，等它**完成**（不是生成中）。徽标在请求完成后、下一次 1 秒轮询
+   才会拿到 usage；进行中的请求没有数字，这是预期。
+2. 打开开发者工具「Token 调试」，确认表格里有这一轮的 TPS。
+3. 悬停徽标看状态行：
+   - 「等待首个请求」→ 当前会话还没有完成的主轮请求；
+   - 「数据源不可用」→ RPC 失败，见下表；
+   - 「未收到调试数据」→ 主世界 tap 没装上，检查补丁是否重建。
+4. 能打开 DevTools 时，在 Console 过滤 `[zcode-tps]`：tap 会把具体的
+   `readSessionDebug` 错误打出来（连续相同的错误只打一次）。
 
 **原因 / 解法**
 
 | 原因 | 解法 |
 |---|---|
-| 没有文本输出（纯等待 / 网络） | 正常；只有页面文本增长才计数 |
-| 文本增长被跳过规则排除 | 输入框、侧边栏、用户消息、终端、开发者工具不计入，属预期 |
-| 切换会话 / 打开侧边栏 | 历史消息首见只记基线；侧边栏在聊天区根外，属预期 |
-| 0.35 秒窗口内不足 0.05 token/s | 会显示 `—`；换长文本再试 |
+| 请求还在生成 | 正常；圆点脉冲、数字保持上一轮，完成后才更新 |
+| 当前会话没有完成的主轮请求 | 面板也会是空的；发一条并等完成 |
+| `session/debug` 超时 / 通道改名 | ZCode 大版本可能改了内部接口；先跑 `node tools/ci/test-debug-source.mjs`，再按 [ARCHITECTURE.md](ARCHITECTURE.md) §7 核对通道名与方法名 |
+| tap 没有注入 | 完全退出 ZCode 后 `node src/patch.mjs --apply` 重建；确认外部 preload 含 `readSessionDebug` |
+| 工作区路径对不上 | 窗口 URL 没有 `initialWorkspacePath` 时，tap 会从出站请求里嗅；远程工作区需要 `workspaceIdentity`，见 §7 |
+| 子代理 / 后台任务没有数字 | 面板的「主轮请求」本来就不含它们，属预期 |
 
 ## 3. 颜色不对 / 看不清
 
@@ -119,6 +129,7 @@ node --check "$(node src/which.mjs resources)/app.asar.unpacked/out/preload/inde
 | 外部 preload 缺失 / 截断 | restore 后重新 apply |
 | 磁盘写满导致写入不完整 | 清理空间后重试 |
 | 头部被并发写坏 | 用 `app.asar.header.tps-bak` 还原；仍失败则重装 ZCode |
+| **卡在启动页 / splash 不动** | 0.3.0 初版 tap 抢跑了 `port.start()`，吃掉了 App 的 `Initialize`；当前源码已修为「只挂监听、等 200 再轮询」。若仍卡：`node src/restore.mjs` 还原后重装 ZCode，再用修复后的版本 apply |
 
 ## 7. 升级后徽标消失
 

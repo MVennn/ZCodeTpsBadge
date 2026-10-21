@@ -141,14 +141,57 @@ for (const [name, t] of Object.entries(themes)) {
     document.querySelector('[data-testid="chat-view"]').appendChild(row);
   };
 
+  // The badge reads the same snapshot as the Developer Tools panel. Drive it
+  // with synthetic rounds; appending DOM text must NOT change the number.
+  var sessionId = 'preview-session';
+  var count = 0;
+  window.__debugSnapshot = function (next) {
+    count += 1;
+    window.postMessage(JSON.stringify({
+      src: 'zcode-tps-debug',
+      kind: 'snapshot',
+      sessionId: sessionId,
+      count: count,
+      round: next,
+      stats: { count: count, avg: 44.8, max: 61.4, min: 31.2 },
+      cache: {
+        hitRateRequestCount: count,
+        totalInputTokens: 12000 * count,
+        totalCacheReadTokens: 8000 * count,
+        hitRate: 0.66
+      }
+    }), '*');
+  };
+  window.__debugActivity = function () {
+    window.postMessage(JSON.stringify({ src: 'zcode-tps-debug', kind: 'activity' }), '*');
+  };
+  window.__debugError = function (message) {
+    window.postMessage(JSON.stringify({ src: 'zcode-tps-debug', kind: 'error', message: message }), '*');
+  };
+
   var params = new URLSearchParams(location.search);
   if (params.get('test') !== '1') {
-    var src = '流式输出测试：正在把模型返回的文本一段一段写进 DOM，徽标应当实时显示吞吐量。The quick brown fox jumps over the lazy dog. ';
+    var speeds = [31.2, 44.8, 52.1, 39.6, 61.4, 48.0];
     var i = 0;
     setInterval(function () {
-      assistant.textContent += src.slice(i, i + 3);
-      i = (i + 3) % src.length;
-    }, 90);
+      window.__debugActivity();
+    }, 700);
+    setInterval(function () {
+      window.__debugSnapshot({
+        requestIndex: i + 1,
+        tokensPerSecond: speeds[i % speeds.length],
+        generationDurationMs: 2400,
+        usage: {
+          inputTokens: 18234,
+          outputTokens: 1432,
+          reasoningTokens: 612,
+          totalTokens: 19666,
+          cachedInputTokens: 12088,
+          cachedWriteInputTokens: 0
+        }
+      });
+      i += 1;
+    }, 5200);
   }
 </script>
 </body>
