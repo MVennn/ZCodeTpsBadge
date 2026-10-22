@@ -239,7 +239,9 @@ const textExtensions = /\.(md|mjs|js|json|cmd|vbs|py|yml|yaml|txt|svg|gitignore|
 const personalName = 'Sans' + 'K';
 const patterns = [
   { re: new RegExp('\\b' + personalName + '\\b'), label: 'personal username' },
-  { re: /[A-Za-z]:[\\/]Users[\\/](?!You\b|Your\b|<)/i, label: 'absolute user path' },
+  // 放行占位用户名与「截断形式」的描述性引用（对齐 8 仓统一的脱敏规则）：
+  // You / Your / <...> / ... 都不算本机路径，完整路径一律拦。
+  { re: /[A-Za-z]:[\\/]Users[\\/](?!You\b|Your\b|<|\.\.\.)/i, label: 'absolute user path' },
   { re: /gho_[A-Za-z0-9]{20,}/, label: 'github token' },
   { re: /github_pat_[A-Za-z0-9_]{20,}/, label: 'github token' },
   { re: /sk-[A-Za-z0-9]{20,}/, label: 'api key' },
