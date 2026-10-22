@@ -35,6 +35,7 @@ ZCodeTpsBadge/
 │   └── release-notes/           # 面向用户的版本说明
 ├── src/                         # 运行时源码
 │   ├── badge-source.mjs         # 徽标代码（preload 与 CDP 共用）
+│   ├── event-source.mjs         # 主世界 tap（轮询 session/debug、上报活动）
 │   ├── config.mjs               # ZCode 路径解析
 │   ├── which.mjs                # 打印解析结果
 │   ├── patch.mjs                # asar 补丁（干跑 / 应用 / 重建）
@@ -48,6 +49,7 @@ ZCodeTpsBadge/
 │   ├── make_social_preview.py   # 门面生成器（logo / ico / 社交预览），栅格资源的唯一实现
 │   ├── gen_assets.py            # 上面那个的兼容入口
 │   ├── ci/check.mjs             # 仓库检查
+│   ├── ci/test-debug-source.mjs # RPC 形状测试
 │   └── preview/                 # 本地预览（build.mjs / serve.mjs）
 ├── .github/                     # Issue 模板与 CI
 ├── package.json                 # 版本与 npm scripts
@@ -139,6 +141,7 @@ ZCodeTpsBadge/
 - 所有 `.mjs` 通过 `node --check`；
 - Markdown 相对链接可解析；
 - 必需文件与资源存在；
+- 数据源守卫：`session/debug` 唯一数据源 + RPC 形状测试（`tools/ci/test-debug-source.mjs`）；
 - Release 说明符合清单口径（首行加粗、`## 本版内容`、固定风险提示、五个动词）；
 - `docs/` 无孤儿文档；
 - 仓库文本不含本机用户名路径或明显密钥。

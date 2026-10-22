@@ -42,7 +42,7 @@ readSessionDebug({ workspacePath, workspaceIdentity?, sessionId })
 宿主返回 `{ sessionId, rounds, networkEntries, cache }`。tap 只取：
 
 - `rounds`：每个完成的主轮请求一条；
-- `cache`：本会话的累计输入 / 缓存命中 / 平均命中率。
+- `cache`：本会话的累计输入 / 累计命中 / 会话请求数（`hitRateRequestCount`）。
 
 `workspacePath` / `workspaceIdentity` 优先取同一会话的
 `zcode:scoped-service-port` 消息（侧聊 / 子会话会带；主聊天窗口通常没有），其次窗口
@@ -102,7 +102,7 @@ URL 的 `initialWorkspacePath`，最后从同端口的出站请求里嗅探。`s
 | 刷新 | 每秒轮询一次；请求完成后，下一次快照即可看到新数值 |
 | 生成中 | 圆点脉冲；数值保持上一轮（`data-running="1"`） |
 | 空闲 | 保留最后一轮数值；最后一次活动 2 秒后圆点变暗 |
-| 无数据 | 显示 `— tok/s`，悬停状态为「等待首个请求」 |
+| 无数据 | 显示 `— tok/s`，悬停状态为「等待首个请求」；12 秒没收到任何快照则为「未收到调试数据」 |
 | 会话切换 | 检测到新的 `sessionId` 时清空本轮与会话统计 |
 | 后台 | `document.hidden` 期间不轮询；恢复可见时立即补一次 |
 | 失败 | RPC 失败 / 超时 / 未知通道：显示 `—`，悬停状态为「数据源不可用」；连续失败按 5 秒退避 |
@@ -129,7 +129,7 @@ URL 的 `initialWorkspacePath`，最后从同端口的出站请求里嗅探。`s
 | 会话请求 | `cache.hitRateRequestCount`（缺失时用本轮快照的 round 数） |
 | 累计输入 | `cache.totalInputTokens` |
 | 累计命中 | `cache.totalCacheReadTokens` |
-| 状态 | 生成中 / 空闲 / 等待首个请求 / 本轮 TPS 异常（已跳过） / 数据源不可用 |
+| 状态 | 生成中 / 空闲 / 等待首个请求 / 本轮 TPS 异常（已跳过） / 未收到调试数据 / 数据源不可用 |
 
 平均 / 最高 / 最低由 tap 在每次快照里按 `rounds` 现算，徽标不自己累计；
 统计跨轮保留在 ZCode 的 agent 会话里，重启 ZCode 或新建会话后从零开始。

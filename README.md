@@ -51,7 +51,7 @@ ZCode 正在运行又不想退出时加 `--force`，补丁会立即写入，但�
 - 每轮请求完成后显示 `42.1 tok/s`（超过 100 取整）；生成中圆点脉冲，数字仍是上一轮的
 - 徽标固定在输入框工具条里、用量左侧，窗口变窄时自动收缩；深浅主题都适配
 - 思考 tokens 由模型 usage 直接给出；不按页面文本、输入框、侧边栏或终端估算
-- 鼠标悬停可看本轮速度、本轮 tokens 与会话累计命中率
+- 鼠标悬停可看本轮速度、本轮 tokens 与会话累计输入 / 命中
 
 统计口径、挂载位置与收缩档位见 [功能专项：tok/s 徽标](https://github.com/MVennn/ZCodeTpsBadge/blob/main/docs/FEATURE-TPS-BADGE.md)。
 

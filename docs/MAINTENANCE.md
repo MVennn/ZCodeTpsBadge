@@ -13,14 +13,16 @@ ZCode 升级会替换 `resources/app.asar`，补丁与徽标消失。步骤：
 3. 完全重启 ZCode；
 4. 确认徽标出现在输入框工具条、悬停卡正常。
 
-如果徽标出现但**不计数**，优先检查聊天区 DOM 是否变了：
+如果徽标出现但**一直是 `— tok/s`**，先看悬停卡的状态行：
 
-- `[data-testid="chat-view"]` / `[data-v4-timeline-message-layer]` 是否还存在；
-- `[data-v4-composer-dock]` / `[data-composer-trailing-actions]` 是否还存在；
-- 用户消息是否仍带 `data-v4-user-input-bubble`。
+- 「数据源不可用」→ tap 没装上，或 `session/debug` 通道 / 方法变了；
+- 「等待首个请求」→ 当前会话还没有完成的主轮请求；
+- 「未收到调试数据」→ 12 秒内没有收到任何快照，检查补丁是否已重建。
 
-选择器变化时同步 [ARCHITECTURE.md](ARCHITECTURE.md) 与
-[FEATURE-TPS-BADGE.md](FEATURE-TPS-BADGE.md)，并补 CHANGELOG。
+0.3.0 起不再按 DOM 文本计数，只有两个选择器还影响徽标：`[data-composer-trailing-actions]`
+（挂载位置）与 `[data-session-id]`（定位当前会话）。它们变化时同步
+[ARCHITECTURE.md](ARCHITECTURE.md) 与 [FEATURE-TPS-BADGE.md](FEATURE-TPS-BADGE.md)，
+并补 CHANGELOG。
 
 ## 2. 资源重建
 
@@ -81,5 +83,11 @@ npm run check
 1. 干净 clone 跑 `npm run check`；
 2. 从零 apply → 重启 → 验收；
 3. 对照 [FEATURE-TPS-BADGE.md](FEATURE-TPS-BADGE.md) §8 的验收清单；
-4. 检查 README 的效果说明与 `docs/` 里的截图是否过期；
+4. 检查 README 的效果说明是否过期（本仓不再保留截图）；
 5. 检查 Release notes 与 CHANGELOG 是否对得上。
+
+## 7. 维护记录
+
+| 日期 | 做了什么 | 结果 |
+|---|---|---|
+| 2026-10-22 | 收尾大扫除：删除 `.tmp/` 与 `tools/preview/site/`；对齐 0.3.0 文档漂移；Release 说明补「反馈入口」规则 | 仓库 30M → 1.9M；`npm run check` 全绿 |

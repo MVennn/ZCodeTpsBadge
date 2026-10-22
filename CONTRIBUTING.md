@@ -66,9 +66,9 @@ npm run assets             # 重新生成 logo / icon.ico / 社交预览
 | 补丁与还原必须成对设计 | [docs/CODE-RULES.md](docs/CODE-RULES.md) §1 |
 | asar 头部等长、偏移不变 | [docs/CODE-RULES.md](docs/CODE-RULES.md) §1 |
 | 先写外部文件、再写头部；原子写入 | [docs/CODE-RULES.md](docs/CODE-RULES.md) §1 |
-| 徽标只统计聊天区根，按根总量算增量 | [docs/CODE-RULES.md](docs/CODE-RULES.md) §2.5 |
+| 数字只来自 session/debug，不按 DOM 文本估算 | [docs/CODE-RULES.md](docs/CODE-RULES.md) §2.5 |
 | 徽标只挂在输入框工具条，不 fixed 兜底 | [docs/CODE-RULES.md](docs/CODE-RULES.md) §2.7 |
-| 悬停卡挂在聊天区根外 | [docs/CODE-RULES.md](docs/CODE-RULES.md) §2.8 |
+| 悬停卡挂在 documentElement 下、不挡鼠标 | [docs/CODE-RULES.md](docs/CODE-RULES.md) §2.8 |
 | 改样式同步 DESIGN 与 CHANGELOG | [docs/DOC-RULES.md](docs/DOC-RULES.md) §4 |
 | 新增 / 删除文档必须更新 docs 索引 | [docs/DOC-RULES.md](docs/DOC-RULES.md) §5 |
 | 发版才动版本号 / tag | [docs/VERSIONING.md](docs/VERSIONING.md) |

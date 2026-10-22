@@ -11,7 +11,7 @@
 | 仓库 / 项目名 | `ZCodeTpsBadge` |
 | 英文标题 | `ZCode Tok/s Badge` |
 | 中文称呼 | `ZCode tok/s 徽标` |
-| 仓库描述 | `ZCode 桌面版右下角 tok/s 徽标：asar unpacked preload 注入，胶囊样式跟随主题。` |
+| 仓库描述 | `ZCode 桌面版输入框工具条 tok/s 徽标：asar unpacked preload 注入，胶囊样式跟随主题。` |
 
 不要写成 `ZCode TPS Badge`（TPS 只在 GitHub topics 里作为检索词）。
 
@@ -19,7 +19,7 @@
 
 | 场景 | 文案 |
 |---|---|
-| 流式输出 | `42.1` + `tok/s` |
+| 有数据（上一轮） | `42.1` + `tok/s` |
 | 空闲 | `—` + `tok/s` |
 | 单位 | 小写 `tok/s`，与数值之间一个空格 |
 
@@ -35,7 +35,7 @@
 最高速度 / 最低速度 / 输出 / 思考 / 输入 / 缓存命中 / 生成耗时 / 会话请求 /
 累计输入 / 累计命中 / 状态）。
 
-单位：速度 `tok/s`，tokens 为整数，命中率为 `%`，耗时为 `s`。
+单位：速度 `tok/s`，tokens 为整数，耗时为 `s`。
 
 ## 4. 文档标题
 

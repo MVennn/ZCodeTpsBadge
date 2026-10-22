@@ -50,7 +50,8 @@ apply 写三样东西：外部 preload、头部备份、头部字段。restore �
 preload 与 CDP 同时存在、页面重载、热更新都靠这两道守卫避免重复。
 
 **规则 2.3 · 只读调试数据，不写宿主状态。**
-不修改聊天内容、不拦截事件；徽标节点 `pointer-events: none`。
+不修改聊天内容、不拦截事件；徽标本体保留 `pointer-events:auto` 以接收悬停，
+悬停卡 `pointer-events:none`。
 唯一允许的宿主调用是 `zcode-agent.readSessionDebug` —— 开发者工具自己每秒也在调
 同一个只读方法。**禁止**调用发送、停止、改模型、改设置等写接口；不转发请求头、
 响应头或消息正文，只保留最后一轮 round 与会话 cache 计数。
@@ -108,7 +109,7 @@ React 重渲染会移除注入节点，必须检测 `host.isConnected` 并重新
 **规则 2.8 · 悬停卡只读快照。**
 `#zcode-tps-tip` 挂在 `document.documentElement` 下，避免被页面布局裁切；
 卡片 `pointer-events:none`，不挡鼠标；位置按徽标 rect 计算并夹在视口内。
-九行数值全部来自最近一次 snapshot（本轮 round + 会话 cache），不在 DOM 里反推，
+十三行数值全部来自最近一次 snapshot（本轮 round + 会话 cache），不在 DOM 里反推，
 也不在徽标侧累计历史。
 
 ## 3. 脚本与路径

@@ -22,7 +22,7 @@
 | 圆点 | 6px 圆形 |
 | 位置 | 输入框底部工具条 `[data-composer-trailing-actions]` 的第一个 flex 子项（用量左侧）；工具条出现前不注入 |
 | 布局 | `display:inline-flex; flex:0 0 auto`，随工具条重排 |
-| 交互 | `pointer-events: none; user-select: none` |
+| 交互 | 徽标本体 `pointer-events:auto`（接收悬停）；`user-select: none` |
 
 实测宽度：完整约 77px，最窄约 27px。
 
@@ -118,7 +118,7 @@ node tools/preview/serve.mjs
 
 1. 两套主题下都能看清数值与单位，胶囊边界可见但不刺眼；
 2. 空闲、生成中、无数据三种状态有明确的主次差异；
-3. 徽标不遮挡 ZCode 右下角可点击控件（`pointer-events: none`）。
+3. 徽标在工具条内随 flex 重排，不覆盖其它控件；悬停卡 `pointer-events:none`，不挡鼠标。
 
 ## 7. 变更流程
 

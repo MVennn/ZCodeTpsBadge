@@ -4,6 +4,30 @@
 
 ---
 
+## [未发布] — 2026-10-22
+
+### 收尾大扫除
+
+- 清理 磁盘 —— 删除 `.tmp/`（28M：`zcode.cjs`、`styles.js`、patched preload 等补丁中间物）
+  与 `tools/preview/site/`（48K 预览生成物）；仓库 **30M → 1.9M**。两者都在 `.gitignore`
+  内（`*.tmp` / `tools/preview/site/`），分别由补丁流程与 `tools/preview/build.mjs` 重新生成。
+- 调整 文档 —— 对齐 0.3.0 漂移：README 悬停说明改为「累计输入 / 命中」；
+  MAINTENANCE 的排错从聊天区 DOM 选择器改为 `session/debug` 状态；TROUBLESHOOTING §10
+  删除字符估算残留；CODE-RULES 修正 `pointer-events` 与「十三行」；CONTRIBUTING 硬规矩；
+  NAMING 的「右下角」与命中率单位；DESIGN 的交互 / 验收；REPO-STANDARD 目录树补
+  `event-source.mjs` 与 `test-debug-source.mjs`；ARCHITECTURE 悬停卡理由；
+  FEATURE 补「未收到调试数据」状态。
+- 调整 文档 —— `docs/release-notes/README.md` 增加「反馈入口」规则：首行加粗总结后
+  紧接一行绝对地址 Issue 链接（`issues/new/choose`），再接 `## 本版内容`；
+  已发布的 0.1.0–0.3.0 正文不回填。
+- 调整 仓库 —— `.gitignore` 增加 `/.codegraph/`（本地索引，可重建）。
+
+**验证**：`npm run check` 全绿（syntax 11 / required 33 / links 133 / docs 13 /
+source guard / release notes 5 / privacy）；`node --check` 全部 `.mjs` 通过；
+`node tools/ci/test-debug-source.mjs` 通过（exit 0）。未 push。
+
+---
+
 ## [0.3.0] — 2026-10-22
 
 ### 改用开发者工具同源的 `session/debug`（0.3.0）

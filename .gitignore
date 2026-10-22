@@ -12,6 +12,9 @@ tools/preview/site/
 *.tmp
 *.tmp-*
 
+# 本地索引（CodeGraph，可重建）
+/.codegraph/
+
 # Node
 node_modules/
 

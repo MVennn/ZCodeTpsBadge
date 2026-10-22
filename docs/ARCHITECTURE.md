@@ -93,7 +93,7 @@ ZCode.exe
 工具条重渲染可能移除注入节点：MutationObserver 发现 `host.isConnected` 为 false 时重新挂载，
 另外每 60 帧检查一次。`ResizeObserver` 观察输入框容器宽度，按 <600 / <480 / <360 三档收缩
 （隐藏圆点 → 隐藏单位 → 缩小字号）。
-悬停统计卡 `#zcode-tps-tip` 挂在 `document.documentElement` 下（不在聊天区根内，不会被计数），
+悬停统计卡 `#zcode-tps-tip` 挂在 `document.documentElement` 下（避免被页面布局裁切），
 `position:fixed` 按徽标矩形定位，`pointer-events:none`。
 
 ## 6. 重建与还原
@@ -250,7 +250,7 @@ ELECTRON_RUN_AS_NODE=1 ./ZCode.exe -e "const fs=require('fs');const b=fs.readFil
 | 文件 | 职责 |
 |---|---|
 | `src/badge-source.mjs` | 徽标全部逻辑与样式；消费 debug 快照；无依赖、可序列化 |
-| `src/event-source.mjs` | 主世界事件 tap：解码 RPC 端口会话帧；无依赖、可序列化 |
+| `src/event-source.mjs` | 主世界 tap：抓服务端口、轮询 `session/debug`、上报生成活动；无依赖、可序列化 |
 | `src/patch.mjs` | 应用 / 重建补丁；干跑；`--force` |
 | `src/restore.mjs` | 还原头部并删除外部 preload |
 | `src/config.mjs` | ZCode 路径解析（环境变量 → `config.local.json` → 默认目录） |
