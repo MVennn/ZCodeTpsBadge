@@ -4,7 +4,20 @@
 
 ---
 
-## [未发布] — 2026-10-22
+## [未发布] — 2026-10-23
+
+### 文档骨架对齐系列仓（2026-10-23）
+
+- 调整 `docs/README.md` —— 引言块换成基准仓完整措辞，补「文档分四类」一句；
+  四类表逐行核对，补 `SECURITY.md` / `LICENSE` 等遗漏项。
+- 调整 `docs/VERSIONING.md` —— 新增 §5「不发版的时候」（按 `package.json` 的 `version` 改写）；
+  通用判断口诀与边界表对齐基准仓，徽标特色边界表保留为「本仓实例」；
+  §3 明确 tag 带 `v`、release-notes 文件名不带 `v`。
+- 调整 `docs/DOC-RULES.md` —— 补红线内容保护、链接纪律双向点验、体量预算与样例时效；
+  三处天然重叠（命名 / 三层验证命令 / Release 口径）写成「一正本 + 链接」。
+- 调整 `docs/REPO-STANDARD.md` —— §5 与 `docs/README.md` 口径对齐；修正旧编号引用
+  （`CONTRIBUTING.md` / `DESIGN.md` / `NAMING.md` / `CODE-RULES.md` / `ARCHITECTURE.md`）。
+- 调整 `SECURITY.md` —— 修 0.3.0 漂移：只读页面文本长度 → 调试快照 usage。
 
 ### 收尾大扫除
 
