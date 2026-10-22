@@ -126,4 +126,4 @@ node tools/preview/serve.mjs
 2. 跑预览并截图对比；
 3. `node src/patch.mjs --apply --force` 重建；
 4. 完全重启 ZCode 看实际效果；
-5. 同步更新本篇与 [CHANGELOG.md](../CHANGELOG.md)（规则见 [DOC-RULES.md](DOC-RULES.md) §4）。
+5. 同步更新本篇与 [CHANGELOG.md](../CHANGELOG.md)（规则见 [DOC-RULES.md](DOC-RULES.md) §5）。

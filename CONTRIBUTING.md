@@ -69,8 +69,8 @@ npm run assets             # 重新生成 logo / icon.ico / 社交预览
 | 数字只来自 session/debug，不按 DOM 文本估算 | [docs/CODE-RULES.md](docs/CODE-RULES.md) §2.5 |
 | 徽标只挂在输入框工具条，不 fixed 兜底 | [docs/CODE-RULES.md](docs/CODE-RULES.md) §2.7 |
 | 悬停卡挂在 documentElement 下、不挡鼠标 | [docs/CODE-RULES.md](docs/CODE-RULES.md) §2.8 |
-| 改样式同步 DESIGN 与 CHANGELOG | [docs/DOC-RULES.md](docs/DOC-RULES.md) §4 |
-| 新增 / 删除文档必须更新 docs 索引 | [docs/DOC-RULES.md](docs/DOC-RULES.md) §5 |
+| 改样式同步 DESIGN 与 CHANGELOG | [docs/DOC-RULES.md](docs/DOC-RULES.md) §5 |
+| 新增 / 删除文档必须更新 docs 索引 | [docs/DOC-RULES.md](docs/DOC-RULES.md) §7 |
 | 发版才动版本号 / tag | [docs/VERSIONING.md](docs/VERSIONING.md) |
 
 ## 资源

@@ -122,10 +122,10 @@ ZCodeTpsBadge/
 | 架构与设计 | 注入机制、视觉规范 |
 | 功能专项 | 一个功能一篇（`FEATURE-*`） |
 | 流程与规范 | 构建、发布、版本、维护、命名、编码、文档、仓库、tools、排错 |
-| 参考资料 | Release notes、assets 定位 |
+| 参考资料 | Release 说明、assets、根文档 |
 
-每篇开头必须有一句话引言；`docs/README.md` 是唯一索引；
-单一正本映射与变更矩阵见 [DOC-RULES.md](DOC-RULES.md)。
+四类划分与每类的现有成员、一句话定位见 [docs/README.md](README.md)（索引是这门面之下的正本）。
+每篇开头必须有一句话引言；单一正本映射与变更矩阵见 [DOC-RULES.md](DOC-RULES.md)。
 
 ## 6. 版本与发布
 
@@ -172,7 +172,7 @@ CI 在 push / PR 时运行 `node tools/ci/check.mjs`（Node 20）。
 | 改目录 / README 骨架 / assets 规格 | 本篇、根 [README.md](../README.md)、[docs/README.md](README.md) |
 | 改图标或品牌色 | `assets/icon.svg`、`python tools/make_social_preview.py`、根 README |
 | 改开发者流程 / 命令 | [CONTRIBUTING.md](../CONTRIBUTING.md)、[BUILD.md](BUILD.md)、`package.json` |
-| 新增 / 删除文档 | [docs/README.md](README.md)、[DOC-RULES.md](DOC-RULES.md) §2 |
+| 新增 / 删除文档 | [docs/README.md](README.md)、[DOC-RULES.md](DOC-RULES.md) §7 |
 | 改构建 / 检查命令 | [BUILD.md](BUILD.md)、`package.json` |
 | 发版 | [VERSIONING.md](VERSIONING.md)、[RELEASE.md](RELEASE.md)、CHANGELOG、release-notes |
 | 用户可感知的改动 | CHANGELOG、release-notes |

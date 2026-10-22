@@ -39,7 +39,8 @@
 
 ## 4. 文档标题
 
-- 文档文件名全大写 + 连字符：`FEATURE-TPS-BADGE.md`；
+- 文档文件名全大写 + 连字符：`FEATURE-TPS-BADGE.md`（完整命名表见
+  [REPO-STANDARD.md](REPO-STANDARD.md) §9，本篇不重复脚本与资源的规则）；
 - 一级标题用中文短语，不加序号；
 - 每篇开头一句话引言；
 - 引用章节用 `§N`，跨文档链接用相对路径。

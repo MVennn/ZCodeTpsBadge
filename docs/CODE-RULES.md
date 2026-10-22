@@ -130,9 +130,12 @@ apply 默认拒绝在 ZCode 运行时写入；`--force` 是显式选择，且只
 
 **规则 4.1 · 改完必须跑三层验证。**
 
-1. `node src/patch.mjs` 干跑，看大小与目标条目；
-2. `node --check` 外部 preload；
-3. `ELECTRON_RUN_AS_NODE=1 ZCode.exe -e ...` 确认 Electron 解析到外部文件。
+命令正本在 [BUILD.md](BUILD.md) §4（干跑 → `node --check` 外部 preload → 让 Electron
+自己解析 asar 路径），本节不重复命令。纪律三条：
+
+1. 三层**一道都不能跳**，尤其是第 3 层（确认 Electron 真的读到外部文件）；
+2. 第 3 步返回的字节数应等于 apply 输出里的 `external=`，第二项为 `true`；
+3. 任一层红了就先修，不要在红了的状态上继续 apply。
 
 **规则 4.2 · 真机效果没验就明说。**
 补丁写对 ≠ 徽标可见。必须完全退出 ZCode 再启动确认；本会话无法重启宿主时，

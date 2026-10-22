@@ -230,6 +230,9 @@ ZCode 把主题类挂在 `<html>` 上（`document.documentElement.classList`）�
 
 ## 10. 验证方法
 
+命令正本在 [BUILD.md](BUILD.md) §4；这里是顺着逆向链路读时的**同一份副本**，
+改命令时两处一起改。
+
 ```bash
 # 1) 干跑：只读，打印原始 / 补丁后大小
 node src/patch.mjs
