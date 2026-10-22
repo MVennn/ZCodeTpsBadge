@@ -106,9 +106,28 @@ if (!entry) {
   fail('Target not found in asar: ' + TARGET, 2);
 }
 
-const dataBase = 18 + jsonSize;
+// asar 头部 = 16 字节前缀 + JSON，JSON 之后按 4 字节对齐补空。数据区起点是
+// 16 + align4(jsonSize)；写成 18 + jsonSize 只在 jsonSize % 4 == 2 时碰巧相等。
+const dataBase = 16 + Math.ceil(jsonSize / 4) * 4;
 let originalSize;
 let original;
+
+// 头部里的 integrity 是 asar 自带的完整性凭据。读出来的字节必须和它一致，
+// 否则说明偏移算错了（或文件被改过）—— 继续往下走会把错位的垃圾当 preload 写出去。
+function verifyIntegrity(buf, integrity, label) {
+  if (!integrity || integrity.algorithm !== 'SHA256') return;
+  const blockSize = Number(integrity.blockSize) || 4194304;
+  const expected = Array.isArray(integrity.blocks) ? integrity.blocks : [];
+  if (expected.length === 0) return;
+  const actual = [];
+  for (let off = 0; off < buf.length; off += blockSize) {
+    actual.push(crypto.createHash('sha256')
+      .update(buf.subarray(off, Math.min(off + blockSize, buf.length)))
+      .digest('hex'));
+  }
+  const ok = expected.length === actual.length && expected.every((h, i) => h === actual[i]);
+  if (!ok) fail(`${label}: 读出的字节与头部记录的 integrity 不一致 —— 偏移算错或文件已损坏`);
+}
 
 if (entry.unpacked) {
   // Rebuilding: the original bytes still sit in the asar at the offset recorded
@@ -132,11 +151,13 @@ if (entry.unpacked) {
   originalSize = originalEntry.size;
   original = Buffer.alloc(originalSize);
   fs.readSync(fd, original, 0, originalSize, dataBase + Number(originalEntry.offset));
+  verifyIntegrity(original, originalEntry.integrity, 'header backup');
   console.log('Already patched; rebuilding the external preload with the current badge source.');
 } else {
   originalSize = entry.size;
   original = Buffer.alloc(originalSize);
   fs.readSync(fd, original, 0, originalSize, dataBase + Number(entry.offset));
+  verifyIntegrity(original, entry.integrity, 'asar entry');
 }
 
 const tapTail = `\n;var __tpsEventTapSource=${eventSource.toString()};\n` +
@@ -181,6 +202,7 @@ let written = 0;
 while (written < newBuf.length) {
   written += fs.writeSync(fd, newBuf, written, newBuf.length - written, 16 + written);
 }
+fs.fsyncSync(fd);
 fs.closeSync(fd);
 
 const vfd = fs.openSync(ASAR, 'r');

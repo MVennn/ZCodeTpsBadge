@@ -6,6 +6,22 @@
 
 ## [未发布] — 2026-10-23
 
+### asar 偏移与完整性（2026-10-23）
+
+- 修复 `src/patch.mjs` —— 数据区基准从 `18 + jsonSize` 改为 `16 + align4(jsonSize)`：
+  asar 头是 16 字节前缀 + JSON，JSON 之后按 4 字节对齐补空，旧写法只在
+  `jsonSize % 4 == 2` 时碰巧相等（当前 ZCode 正好余 2，所以一直没炸）。
+  余数为 1 或 3 时会错 1 字节，把错位字节当成 preload 原文、再把 integrity
+  改成这份错位内容的哈希 —— 哈希自洽但内容从第一个字节就是错的，
+  表现为 ZCode 白屏或启动崩溃，`--force` 也拦不住
+- 修复 `src/patch.mjs` —— 读出的原始字节与头部 `integrity.blocks` 逐块比对，
+  不一致直接失败退出；不再只把前 40 字节打到控制台
+- 修复 `src/patch.mjs` —— 头部写完后 `fsync`，缩小断电 / 磁盘满时
+  7 MB 头部只写一半的窗口
+- 验证 —— 干跑通过（integrity 校验命中当前 asar 的真实 SHA256）；
+  `node --check` ✓、`node tools/ci/check.mjs` 全绿（7 项）
+
+
 ### 文档骨架对齐系列仓（2026-10-23）
 
 - 调整 `docs/README.md` —— 引言块换成基准仓完整措辞，补「文档分四类」一句；
