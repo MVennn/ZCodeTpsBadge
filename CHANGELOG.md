@@ -4,7 +4,26 @@
 
 ---
 
-## [未发布] — 2026-10-23
+## [未发布] — 2026-10-24
+
+### 还原归属校验与端口嗅探（2026-10-24）
+
+- 修复 `src/restore.mjs` —— 之前只校验「备份字节数 == 当前头长度」，跨 ZCode 版本
+  apply/restore 时旧备份也能通过，写回去会让头里所有 offset 错位、asar 损坏。现在除目标
+  文件外逐条比对 offset / size / integrity，不一致直接拒绝并提示重装；写回后 `fsync` 并
+  重读校验目标条目已恢复；外部 preload 删不掉时 fail-closed 并给出路径。新增 `--dry-run`
+- 修复 `src/event-source.mjs` —— 出站嗅探从「替换 `MessagePort.prototype.postMessage`」
+  改为「只包装捕获到的那个 service port」，渲染进程里其它 MessagePort（文件、剪贴板、
+  会话快照）不再每条消息都过一遍逐字节扫描；扫描加 64B–512KB 窗口；新端口到达时清掉
+  上一轮的 sniff 结果；`scopedInfo` 换成 Map + 32 条 LRU
+- 调整 `tools/ci/check.mjs` —— 源码守卫禁止再改 `MessagePort.prototype`，并要求
+  `installPortSniffer` 存在
+- 验证 —— `node --check` ✓、`node tools/ci/test-debug-source.mjs` ✓、
+  `node tools/ci/check.mjs` 全绿；`restore.mjs --dry-run` 在真实 asar 上通过，
+  合成 asar 验证「同源放行、改一个非目标条目即拒绝」
+- 注意 —— 注入内容有变，需要完全退出 ZCode 后重新运行 `tools/apply.cmd`
+
+## [0.3.1] — 2026-10-23
 
 ### asar 偏移与完整性（2026-10-23）
 

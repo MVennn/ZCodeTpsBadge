@@ -201,9 +201,18 @@ export function eventSource() {
   // sessionId -> { path, identity } from the scoped service-port message. That
   // message carries the exact workspace the app uses for the session, which is
   // more reliable than the window URL for remote / switched workspaces.
-  const scopedInfo = Object.create(null);
+  // A Map (not a plain object) so the oldest sessions can be evicted.
+  const scopedInfo = new Map();
+  const SCOPED_MAX = 32;
+
+  // Only scan plausible RPC frames: tiny heartbeats cannot carry a workspace
+  // path, and huge payloads (file chunks, clipboard, session snapshots) would
+  // pay an O(n*m) scan for nothing.
+  const SNIFF_MIN_BYTES = 64;
+  const SNIFF_MAX_BYTES = 512 * 1024;
 
   function sniffOutgoing(u8) {
+    if (u8.length < SNIFF_MIN_BYTES || u8.length > SNIFF_MAX_BYTES) return;
     if (!hasAscii(u8, 'workspacePath')) return;
     const msg = decodeRpc(u8);
     if (!msg || msg.head[0] !== 100) return;
@@ -215,14 +224,14 @@ export function eventSource() {
   }
 
   function workspacePath(sessionId) {
-    const scoped = scopedInfo[sessionId];
+    const scoped = scopedInfo.get(sessionId);
     if (scoped && scoped.path) return scoped.path;
     const fromUrl = new URLSearchParams(location.search).get('initialWorkspacePath');
     return fromUrl || sniffedPath || '';
   }
 
   function workspaceIdentity(sessionId) {
-    const scoped = scopedInfo[sessionId];
+    const scoped = scopedInfo.get(sessionId);
     if (scoped && scoped.identity) return scoped.identity;
     return sniffedIdentity || '';
   }
@@ -431,10 +440,16 @@ export function eventSource() {
 
     if (d.type === SCOPED_PORT) {
       if (typeof d.sessionId === 'string' && typeof d.workspacePath === 'string' && d.workspacePath) {
-        scopedInfo[d.sessionId] = {
+        // delete + set makes the Map a real LRU: the oldest entry is evicted first.
+        scopedInfo.delete(d.sessionId);
+        scopedInfo.set(d.sessionId, {
           path: d.workspacePath,
           identity: typeof d.workspaceIdentity === 'string' ? d.workspaceIdentity : ''
-        };
+        });
+        while (scopedInfo.size > SCOPED_MAX) {
+          const oldest = scopedInfo.keys().next().value;
+          scopedInfo.delete(oldest);
+        }
       }
       return;
     }
@@ -452,6 +467,13 @@ export function eventSource() {
     pendingId = 0;
     nextPollAt = 0;
     lastError = '';
+    // A new port means a new window / workspace: the previous sniff result no
+    // longer describes it, and stale paths would leak into the next session.
+    // scopedInfo is keyed by sessionId and may arrive before the port, so it
+    // is not cleared here.
+    sniffedPath = '';
+    sniffedIdentity = '';
+    installPortSniffer(port);
     // Only attach. Do NOT call port.start(): the App's MessagePortProtocol
     // owns startup and must receive the queued Initialize(200) itself.
     // Starting it here steals that frame; the App's ChannelClient stays
@@ -476,18 +498,29 @@ export function eventSource() {
   });
   setInterval(poll, POLL_MS);
 
-  // --- outbound sniff + MessagePort wrapping ----------------------------
-  const proto = typeof MessagePort !== 'undefined' ? MessagePort.prototype : null;
-  if (!proto) return;
+  // --- outbound sniff (instance-scoped) --------------------------------
+  // Wrap only the service port we captured. Patching MessagePort.prototype
+  // would put a scan on every port in the renderer (files, clipboard, session
+  // snapshots) and cannot be undone without restarting the process.
+  const sniffedPorts = new WeakSet();
 
-  const origPost = proto.postMessage;
-  proto.postMessage = function (message, transfer) {
+  function installPortSniffer(port) {
     try {
-      if (!selfPost) {
-        const u8 = asBytes(message);
-        if (u8) sniffOutgoing(u8);
-      }
+      if (sniffedPorts.has(port)) return;
+      sniffedPorts.add(port);
+      const origPost = port.postMessage;
+      Object.defineProperty(port, 'postMessage', {
+        configurable: true,
+        value: function (message, transfer) {
+          try {
+            if (!selfPost) {
+              const u8 = asBytes(message);
+              if (u8) sniffOutgoing(u8);
+            }
+          } catch {}
+          return origPost.apply(this, arguments);
+        }
+      });
     } catch {}
-    return origPost.apply(this, arguments);
-  };
+  }
 }

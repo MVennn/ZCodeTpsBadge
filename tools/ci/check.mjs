@@ -201,6 +201,12 @@ for (const needle of ['COUNTED_PATHS', 'estimateTokens', 'countCjk']) {
 if (/servicePort\.start\s*\(/.test(tapSrc)) {
   fail('source', 'src/event-source.mjs: must not start the service port (steals Initialize)');
 }
+if (/MessagePort\.prototype\s*\.\s*postMessage\s*=|\bproto\.postMessage\s*=/.test(tapSrc)) {
+  fail('source', 'src/event-source.mjs: wrap the captured port instance, not MessagePort.prototype');
+}
+if (!tapSrc.includes('installPortSniffer')) {
+  fail('source', 'src/event-source.mjs: missing instance-scoped outbound sniffer');
+}
 const rpcTest = spawnSync(process.execPath, [path.join(ROOT, 'tools/ci/test-debug-source.mjs')], {
   encoding: 'utf8'
 });
