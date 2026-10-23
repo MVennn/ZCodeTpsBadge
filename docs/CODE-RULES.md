@@ -16,11 +16,16 @@ apply 写三样东西：外部 preload、头部备份、头部字段。restore �
 
 - 症状：还原后徽标还在，或 ZCode 启动报 preload 缺失。
 
-**规则 1.2 · 头部必须等长写入。**
+**规则 1.2 · 头部必须等长写入；数据区基准是 `16 + align4(jsonSize)`。**
 新 JSON 用 `0x20` 补齐到原 `jsonSize`；超出就失败退出，绝不扩容。
-`dataBase = 18 + jsonSize` 是所有 `offset` 的基准，长度一变，全盘偏移失效。
+asar 头是 **16 字节前缀 + JSON**，JSON 之后按 4 字节对齐补空 —— 数据区起点是
+`16 + Math.ceil(jsonSize / 4) * 4`。写成 `18 + jsonSize` 只在 `jsonSize % 4 == 2`
+时碰巧相等（当前 ZCode 正好余 2，所以错了很久没被发现）；余 1 / 3 时会错 1 字节，
+把错位内容当成 preload 写入、再把 integrity 改成这份错位内容的哈希 —— 哈希自洽但
+内容从第一个字节就是错的。读完原始字节后必须用头部里的 `integrity.blocks` 逐块比对，
+不一致就失败退出。
 
-- 症状：ZCode 启动白屏、文件读取错位、asar 解析失败。
+- 症状：ZCode 启动白屏、文件读取错位、asar 解析失败；或补丁后能启动但 preload 行为异常。
 
 **规则 1.3 · 先写外部文件，再写头部。**
 头部一旦出现 `unpacked=true`，Electron 就会去读外部文件。顺序反了会出现
@@ -36,6 +41,14 @@ apply 写三样东西：外部 preload、头部备份、头部字段。restore �
 **规则 1.6 · 备份只在首次应用时写。**
 `if (!exists(BACKUP)) write(BACKUP, headerBuf)`。重建时覆盖备份会把「原始头部」
 换成「已补丁头部」，之后再也还原不回去。
+
+**规则 1.7 · 还原前证明备份属于当前 asar。**
+只校验「备份长度 == 当前 `jsonSize`」不够：跨 ZCode 版本时旧备份也能撞上长度，
+写回去会让头里所有 `offset` 错位。除目标文件外，逐条比对 `offset` / `size` / `integrity`；
+写回后 `fsync` 并重读校验目标条目已恢复成普通条目；外部 preload 删不掉时 fail-closed，
+给出需要手动删除的路径。
+
+- 症状：还原后 ZCode 起不来；或还原「成功」但磁盘上留着坏的外部 preload。
 
 ## 2. 徽标代码
 
@@ -111,6 +124,14 @@ React 重渲染会移除注入节点，必须检测 `host.isConnected` 并重新
 卡片 `pointer-events:none`，不挡鼠标；位置按徽标 rect 计算并夹在视口内。
 十三行数值全部来自最近一次 snapshot（本轮 round + 会话 cache），不在 DOM 里反推，
 也不在徽标侧累计历史。
+
+**规则 2.11 · 不要替换 `MessagePort.prototype`。**
+出站嗅探只包装捕获到的那个 service port 实例（`Object.defineProperty(port, 'postMessage', …)`）。
+改原型会给渲染进程里**所有** MessagePort（文件、剪贴板、会话快照）挂上逐字节扫描，
+而且无法撤销（只能杀渲染进程）。扫描加大小窗口（64B–512KB）；新端口到达时清掉上一轮
+的 sniff 结果；`scopedInfo` 用 Map + LRU 限制条目数。
+
+- 症状：ZCode 大文件 / 剪贴板操作变卡；切换窗口后读到上一个工作区的路径。
 
 ## 3. 脚本与路径
 
