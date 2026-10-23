@@ -210,7 +210,6 @@ export function badgeSource() {
     let generating = false;
     let error = '';
     let gotSnapshot = false;
-    let frames = 0;
 
     function fmtSpeed(n) {
       if (typeof n !== 'number' || !isFinite(n) || n < 0) return '\u2014';
@@ -274,9 +273,15 @@ export function badgeSource() {
     // The tap lives in the main world and posts JSON strings across the
     // isolation boundary. Snapshots carry only the last round and session
     // totals — never text, headers or request messages.
+    //
+    // Every window message on this page passes through here, including the
+    // app's own (potentially large) JSON strings. Test the fixed prefix first so
+    // unrelated payloads are never parsed.
+    const SNAPSHOT_PREFIX = '{"src":"zcode-tps-debug"';
     window.addEventListener('message', (e) => {
       let d = e.data;
       if (typeof d === 'string') {
+        if (d.lastIndexOf(SNAPSHOT_PREFIX, 0) !== 0) return;
         try { d = JSON.parse(d); } catch { return; }
       }
       if (!d || d.src !== 'zcode-tps-debug') return;
@@ -369,7 +374,12 @@ export function badgeSource() {
     host.addEventListener('mouseleave', hideTip);
     window.addEventListener('resize', positionTip);
 
-    function tick() {
+    // A 1 s timer instead of a per-frame loop: the old loop woke the compositor
+    // 60 times a second for the whole life of the window (ZCode never closes a
+    // chat window) just to expire the "generating" dot and re-attach the badge
+    // after a React re-render. Both only need second granularity.
+    const TICK_MS = 1000;
+    setInterval(() => {
       const now = performance.now();
       // Activity covers the gap between "request started generating" and the
       // next completed round. It drives the dot only; the number always stays
@@ -378,14 +388,9 @@ export function badgeSource() {
         generating = false;
         updateBadge();
       }
-      if (++frames >= 60) {
-        frames = 0;
-        placeBadge();
-      }
-      requestAnimationFrame(tick);
-    }
+      placeBadge();
+    }, TICK_MS);
     updateBadge();
-    requestAnimationFrame(tick);
   }
 
   // --- main-world debug tap bridge --------------------------------------

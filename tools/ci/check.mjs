@@ -164,11 +164,16 @@ for (const [needle, why] of [
   ['reasoningTokens', 'reasoning usage surfaced in the tooltip'],
   ['lastRoundPlausible', 'ignore implausible current-round TPS'],
   ['d.plausible', 'read the tap plausibility flag'],
-  ["typeof __tpsEventTapSource === 'function'", 'event tap install path must invoke the bound function']
+  ["typeof __tpsEventTapSource === 'function'", 'event tap install path must invoke the bound function'],
+  ['SNAPSHOT_PREFIX', 'window messages must be prefix-filtered before JSON.parse'],
+  ['setInterval(', 'badge tick must be a timer']
 ]) {
   if (!badgeSrc.includes(needle)) {
     fail('source', `src/badge-source.mjs: missing ${why} (${needle})`);
   }
+}
+if (/requestAnimationFrame/.test(badgeSrc)) {
+  fail('source', 'src/badge-source.mjs: no rAF loop — a chat window never unloads, use a timer');
 }
 for (const needle of ['estimateTokens', 'RATE_CAP', 'NOMINAL_RATE', 'domStale', "src: 'zcode-tps-event'"]) {
   if (badgeSrc.includes(needle)) {
@@ -187,11 +192,22 @@ for (const [needle, why] of [
   ['!portReady', 'do not poll before Initialize'],
   ['isPlausibleRound', 'filter implausible TPS rounds from stats'],
   ['MAX_PLAUSIBLE_TPS', 'TPS outlier cap'],
-  ['plausible:', 'forward the current-round plausibility flag']
+  ['plausible:', 'forward the current-round plausibility flag'],
+  ['decodeHead', 'decode the message head only'],
+  ['pickTopLevel', 'slice the poll response per field'],
+  ['scanConversationFrame', 'scan event frames instead of parsing them'],
+  ['IDLE_POLL_MS', 'back off polling while idle'],
+  ['lastSignature', 'skip unchanged snapshots'],
+  ['var DECODER', 'a single TextDecoder per window']
 ]) {
   if (!tapSrc.includes(needle)) {
     fail('source', `src/event-source.mjs: missing ${why} (${needle})`);
   }
+}
+// Bytes we never read must stay unparsed: the response's `networkEntries` (up to
+// 100 records of headers + a 2 KB message) is the whole reason for the slicer.
+if (tapSrc.includes('networkEntries')) {
+  fail('source', 'src/event-source.mjs: networkEntries must never be read or forwarded');
 }
 for (const needle of ['COUNTED_PATHS', 'estimateTokens', 'countCjk']) {
   if (tapSrc.includes(needle)) {

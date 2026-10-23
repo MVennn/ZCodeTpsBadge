@@ -148,13 +148,19 @@ const fakeLocation = {
   search: '?initialWorkspacePath=' + encodeURIComponent(WORKSPACE)
 };
 
+// Mutable clock + captured interval so the tests can drive the poller without
+// waiting for real seconds (idle back-off is timing behaviour).
+const clock = { now: 1000 };
+const intervals = [];
+const advance = (ms) => { clock.now += ms; };
+
 const context = {
   window: fakeWindow,
   document: fakeDocument,
   location: fakeLocation,
   MessagePort: FakeMessagePort,
-  performance: { now: () => 1000 },
-  setInterval: () => 1,
+  performance: { now: () => clock.now },
+  setInterval: (fn) => { intervals.push(fn); return intervals.length; },
   setTimeout: () => 1,
   TextEncoder,
   TextDecoder,
@@ -257,6 +263,23 @@ const snapshot = {
     hitRate: 1
   }
 };
+// The real payload carries up to 100 network records, each with 512-char
+// headers and a 2 KB message. None of it is needed, and it must never be
+// decoded: this fixture is ~1.4 MB.
+const networkHeaders = Object.fromEntries(Array.from({ length: 24 }, (_, i) => [
+  'x-header-' + i, 'v'.repeat(480)
+]));
+snapshot.networkEntries = Array.from({ length: 100 }, (_, i) => ({
+  eventKey: 'n' + i,
+  traceId: 't' + i,
+  statusType: 'model_request_completed',
+  recordedAt: i,
+  requestHeaders: networkHeaders,
+  responseHeaders: { 'content-type': 'application/json' },
+  requestHeaderCount: 24,
+  responseHeaderCount: 1,
+  message: 'm'.repeat(2000)
+}));
 port.receive(encodeFrame([201, request.head[1]], snapshot));
 
 const debugMessages = () => fakeWindow.posted
@@ -272,12 +295,78 @@ assert.equal(snap.plausible, false);
 assert.equal(snap.cache.hitRate, 1);
 assert.equal('networkEntries' in snap, false, 'network headers must not leave the tap');
 
+// Slicing proof: only rounds/cache/sessionId were parsed, not the ~1.4 MB of
+// network entries. `fallback` staying at 0 means the byte scanner handled it.
+const tapStats = fakeWindow.__zcodeTpsTapStats;
+assert.ok(tapStats, 'tap exposes counters');
+assert.equal(tapStats.picked, 1, 'response must be sliced, not fully decoded');
+assert.equal(tapStats.fallback, 0, 'no full JSON.parse fallback on the normal shape');
+assert.ok(
+  tapStats.parsedBytes < 64 * 1024,
+  `only the needed fields are parsed (got ${tapStats.parsedBytes} bytes for a ~1.4 MB payload)`
+);
+
+// --- identical snapshots are not re-posted ---------------------------------
+const snapshotPosts = () => debugMessages().filter((m) => m.kind === 'snapshot').length;
+assert.equal(snapshotPosts(), 1);
+advance(1100);                      // still inside the 5 s active window
+intervals.at(-1)();
+assert.equal(port.sent.length, 2, 'active polling continues once per second');
+const repeat = decodeFrame(port.sent[1]);
+port.receive(encodeFrame([201, repeat.head[1]], snapshot));
+assert.equal(snapshotPosts(), 1, 'an unchanged snapshot is not posted again');
+
+// --- idle back-off ---------------------------------------------------------
+advance(7000);                      // >5 s since activity, <10 s since last poll
+intervals.at(-1)();
+assert.equal(port.sent.length, 2, 'idle polls back off to 10 s');
+advance(3000);                      // now 10.1 s since the last poll
+intervals.at(-1)();
+assert.equal(port.sent.length, 3, 'idle poll fires after the back-off window');
+const idlePoll = decodeFrame(port.sent[2]);
+assert.deepEqual(idlePoll.data, [{ workspacePath: WORKSPACE, sessionId: SESSION }]);
+
 // --- activity ------------------------------------------------------------
+const activityCount = () => debugMessages().filter((m) => m.kind === 'activity').length;
+assert.equal(activityCount(), 0);
+
+// Frames on other topics are not activity.
 port.receive(encodeFrame([204, 1], {
+  topic: 'workspace/presentation',
+  payload: { kind: 'deltas', deltas: [{ op: 'x' }] }
+}));
+assert.equal(activityCount(), 0, 'non-conversation frames are ignored');
+
+// A resume snapshot (`deltas: []`) is not generation either.
+port.receive(encodeFrame([204, 2], {
+  topic: 'conversation/' + SESSION,
+  payload: { kind: 'snapshot', deltas: [] }
+}));
+assert.equal(activityCount(), 0, 'empty deltas are not activity');
+
+// The session id is read from the topic bytes even without a parse.
+assert.equal(fakeWindow.__zcodeTpsSessionId, SESSION);
+
+port.receive(encodeFrame([204, 3], {
   topic: 'conversation/' + SESSION,
   payload: { kind: 'deltas', deltas: [{ op: 'row.delta', rowId: 1, path: 'text', append: 'x' }] }
 }));
 assert.ok(debugMessages().some((m) => m.kind === 'activity'), 'activity must be forwarded');
+
+// A big conversation snapshot (resume) must be classified from its bytes, not
+// decoded: the rows carry the whole message history.
+const bigRows = Array.from({ length: 200 }, (_, i) => ({
+  id: 'row' + i,
+  text: 'x'.repeat(2000),
+  tool: { name: 'read', argv: ['"deltas":[]'], result: 'y'.repeat(500) }
+}));
+const beforeFrames = fakeWindow.__zcodeTpsTapStats.frames;
+port.receive(encodeFrame([204, 4], {
+  topic: 'conversation/' + SESSION,
+  payload: { kind: 'snapshot', rows: bigRows, deltas: [] }
+}));
+assert.equal(fakeWindow.__zcodeTpsTapStats.frames, beforeFrames + 1, 'frame counted');
+assert.equal(activityCount(), 1, 'a resume snapshot is not generation');
 
 // --- error response on a reconnected port --------------------------------
 const port2 = new FakeMessagePort();
