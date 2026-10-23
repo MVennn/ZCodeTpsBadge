@@ -90,6 +90,7 @@ docs/ 分四类（索引见 [README.md](README.md)）：
 
 | 变更 | 必须同步 |
 |---|---|
+| **修一个缺陷**（行为变化 / 判据修正 / 安全加固） | [CODE-RULES.md](CODE-RULES.md) 对应节补规则（含「症状」）；CHANGELOG 只是变更记录，**不算补文档** |
 | 改目录 / README 骨架 / assets 规格 / CI | [REPO-STANDARD.md](REPO-STANDARD.md)、根 [README.md](../README.md)、[README.md](README.md) 索引 |
 | 改图标或品牌色 | `assets/icon.svg`、`python tools/make_social_preview.py`、根 README |
 | 改徽标样式 / 尺寸 / 颜色 | [DESIGN.md](DESIGN.md)、[CHANGELOG.md](../CHANGELOG.md) |
