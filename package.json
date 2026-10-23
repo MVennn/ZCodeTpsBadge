@@ -1,6 +1,6 @@
 {
   "name": "zcode-tps-badge",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Capsule tok/s badge for the ZCode desktop app.",
   "type": "module",

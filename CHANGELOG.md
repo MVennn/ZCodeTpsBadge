@@ -4,9 +4,53 @@
 
 ---
 
-## [未发布] — 2026-10-24
+## [0.3.2] — 2026-10-23
 
-### 还原归属校验与端口嗅探（2026-10-24）
+### 内存与解码开销（2026-10-23）
+
+- 症状 —— 徽标长期开着，ZCode 渲染进程内存持续上涨、GC 抖动；开发者工具里能看到
+  频繁的大对象分配。改动集中在「为了读一个字段而 parse 整个载荷」
+- 根因 —— 三条：① base service port 承载整个工作区的 RPC（会话快照、文件内容、
+  工具输出），tap 每条消息都完整解码只为读 `msgType`；② 轮询响应
+  `{sessionId, rounds, networkEntries, cache}` 整体 `JSON.parse`，而
+  `networkEntries` 最多 100 条、每条含 24 个 512 字符的头 + 2KB 消息（约 1.4MB），
+  一次用不上；③ 徽标用 `requestAnimationFrame` 常驻循环做「每秒一次」的重挂载与
+  圆点过期，聊天窗口从不销毁，等于让合成器长期跑 60Hz
+- 改法 `src/event-source.mjs` —— 端口消息只解 head（`decodeHead`），不是本 tap 的
+  响应直接丢、不碰载荷；轮询响应用 `pickTopLevel` 按顶层成员切片，只 parse
+  `sessionId` / `rounds` / `cache`；事件帧改用 `scanConversationFrame` 扫字节判断
+  topic 与 `deltas` 是否非空（恢复会话那帧整段历史快照不再进 JS 堆）。
+  **三种失败都退回完整解码**：优化不得改变语义
+- 改法 节奏与去重 —— 有活动（最近 5 秒有增量）时 1 秒轮询，空闲退到 10 秒；
+  快照签名不变则不重复 post；`TextEncoder` / `TextDecoder` 与 ASCII 模式串改窗口级单例
+- 改法 `src/badge-source.mjs` —— 常驻循环换成 1 秒 `setInterval`；
+  窗口消息先比固定前缀 `{"src":"zcode-tps-debug"` 再 `JSON.parse`
+- 验证 —— `tools/ci/test-debug-source.mjs` 新增 1.4MB `networkEntries` 夹具，
+  断言 `picked === 1`、`fallback === 0`、`parsedBytes < 64KB`；
+  新增「重复快照不重发」「空闲退避」「非会话帧 / 空 deltas 不算活动」「大快照不解码」
+  断言；`node tools/ci/check.mjs` 全绿（守卫新增：徽标源码不得出现
+  `requestAnimationFrame`、tap 源码不得出现 `networkEntries`）
+- 注意 —— 注入内容有变，需要**完全退出 ZCode**（托盘 → 退出）后重新启动才生效
+
+### 升级后的头部备份刷新（2026-10-23）
+
+- 症状 —— ZCode 自动更新后徽标消失（正常），重新 apply 时可能报
+  `integrity 不一致`；跨版本还原时旧备份还能通过长度检查，写回会把头部写乱
+- 根因 —— `patch.mjs` 沿用规则 1.6「备份只在首次应用时写」，但 ZCode 升级只替换
+  `app.asar`、不管 `app.asar.header.tps-bak`。升级后目标条目回到「未打补丁」状态，
+  tap 走备份路径读原始字节 —— 而旧备份的 offset 指向上一个版本的布局
+- 改法 `src/patch.mjs` —— 判断依据改为「读到的目标条目是否已打补丁」：
+  未打补丁 ⇒ 当前头部是干净的，直接用它写（覆盖）备份，并在覆盖时打印
+  `header backup belongs to an older ZCode build`；已打补丁 ⇒ 绝不覆盖（规则 1.5 前提）。
+  `restore.mjs` 的逐条 ownership 校验保留，作为最后一道网
+- 验证 —— 真实 asar 上 `node src/patch.mjs --apply --force` 输出
+  `header backup belongs to an older ZCode build; replacing it.`；
+  `verified: unpacked=true size=823745 external=823745`；三层验证全过
+- 文档 —— `docs/CODE-RULES.md` 规则 1.6 改写（原「备份只在首次应用时写」是错的），
+  新增规则 2.12「按字节取用」；`docs/ARCHITECTURE.md` §6 补升级后备份说明、
+  新增 §7.5 内存与解码预算；`FEATURE-TPS-BADGE.md` §3/§4 同步刷新节奏
+
+### 还原归属校验与端口嗅探（2026-10-23）
 
 - 修复 `src/restore.mjs` —— 之前只校验「备份字节数 == 当前头长度」，跨 ZCode 版本
   apply/restore 时旧备份也能通过，写回去会让头里所有 offset 错位、asar 损坏。现在除目标

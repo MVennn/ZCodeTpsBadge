@@ -24,7 +24,7 @@
 - 锚点：`[data-composer-trailing-actions]`，插入为第一个 flex 子项；
 - 优先选择可见的 `[data-v4-composer-dock]` 内的工具条；
 - 工具条出现前不注入，**不做 fixed 右下角兜底**；
-- React 重渲染移除节点时自动重新挂载（每 60 帧兜底）；
+- React 重渲染移除节点时自动重新挂载（每秒检查一次）；
 - 窗口缩放时随工具条重排，并按容器宽度三档收缩；
 - 深 / 浅主题自动适配，配色与降级值见 [DESIGN.md](DESIGN.md) §3。
 
@@ -33,7 +33,8 @@
 只有一条数据路：ZCode 开发者工具「Token 调试」使用的 session debug 快照。
 
 主世界的 tap（`src/event-source.mjs`）抓住宿主下发的 base service
-MessagePort（`zcode:service-port`），每秒向 `zcode-agent` 通道发一次只读请求：
+MessagePort（`zcode:service-port`），向 `zcode-agent` 通道发只读请求
+（**活动时每秒一次，空闲时每 10 秒一次**）：
 
 ```
 readSessionDebug({ workspacePath, workspaceIdentity?, sessionId })
@@ -43,6 +44,9 @@ readSessionDebug({ workspacePath, workspaceIdentity?, sessionId })
 
 - `rounds`：每个完成的主轮请求一条；
 - `cache`：本会话的累计输入 / 累计命中 / 会话请求数（`hitRateRequestCount`）。
+
+`networkEntries` 不在取用范围内，也**不会被解析**（见
+[ARCHITECTURE.md](ARCHITECTURE.md) §7.5）。
 
 `workspacePath` / `workspaceIdentity` 优先取同一会话的
 `zcode:scoped-service-port` 消息（侧聊 / 子会话会带；主聊天窗口通常没有），其次窗口
@@ -88,7 +92,8 @@ URL 的 `initialWorkspacePath`，最后从同端口的出站请求里嗅探。`s
 - tap 不调用发送、修改、停止等任何写接口；
 - `networkEntries`、请求头、响应头、消息正文都不转发给徽标，只转发最后一轮
   round 与会话 cache；
-- 每秒最多一个请求、同一时间最多一个在途请求；窗口隐藏时暂停，恢复后立即刷新。
+- 活动时每秒最多一个请求、空闲时每 10 秒最多一个，同一时间最多一个在途请求；
+  窗口隐藏时暂停，恢复后立即刷新；内容没变的快照不重复下发。
 
 ## 4. 统计口径
 
@@ -99,7 +104,7 @@ URL 的 `initialWorkspacePath`，最后从同端口的出站请求里嗅探。`s
 | TPS | `outputTokens ÷ (durationMs − timeToFirstContentMs)`，即 round 里的 `tokensPerSecond` |
 | 速度统计 | 快照 `rounds` 里**有效轮次**：`tokensPerSecond > 0`、`generationDurationMs ≥ 100ms`、`tokensPerSecond ≤ 2000`；平均为算术平均，最高 / 最低为最大 / 最小；最多最近 200 轮（agent 上限，与面板表格一致） |
 | 异常轮次 | 面板偶发的 `generationDurationMs ≈ 6ms` 会让 388 output 算出 64,666.7 tok/s；这类轮次不计入平均 / 最高 / 最低，本轮显示 `—`，状态「本轮 TPS 异常（已跳过）」 |
-| 刷新 | 每秒轮询一次；请求完成后，下一次快照即可看到新数值 |
+| 刷新 | 有活动时每秒轮询一次，空闲时退到 10 秒一次；请求完成后，下一次快照即可看到新数值 |
 | 生成中 | 圆点脉冲；数值保持上一轮（`data-running="1"`） |
 | 空闲 | 保留最后一轮数值；最后一次活动 2 秒后圆点变暗 |
 | 无数据 | 显示 `— tok/s`，悬停状态为「等待首个请求」；12 秒没收到任何快照则为「未收到调试数据」 |
