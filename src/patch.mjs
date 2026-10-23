@@ -129,6 +129,7 @@ function verifyIntegrity(buf, integrity, label) {
   if (!ok) fail(`${label}: 读出的字节与头部记录的 integrity 不一致 —— 偏移算错或文件已损坏`);
 }
 
+let refreshBackup = false;
 if (entry.unpacked) {
   // Rebuilding: the original bytes still sit in the asar at the offset recorded
   // in the header backup (the patched header dropped that offset).
@@ -158,6 +159,11 @@ if (entry.unpacked) {
   original = Buffer.alloc(originalSize);
   fs.readSync(fd, original, 0, originalSize, dataBase + Number(entry.offset));
   verifyIntegrity(original, entry.integrity, 'asar entry');
+  // A ZCode update replaces app.asar and leaves the old header backup behind.
+  // That backup describes the previous version: its offsets point into a file
+  // that no longer exists, so a rebuild would read garbage and a restore would
+  // scramble every offset. This header is pristine — always adopt it.
+  refreshBackup = true;
 }
 
 const tapTail = `\n;var __tpsEventTapSource=${eventSource.toString()};\n` +
@@ -197,7 +203,12 @@ const external = path.join(UNPACKED, TARGET);
 const tmpExternal = external + '.tmp-' + process.pid;
 fs.writeFileSync(tmpExternal, patched);
 fs.renameSync(tmpExternal, external);
-if (!fs.existsSync(BACKUP)) fs.writeFileSync(BACKUP, headerBuf);
+if (refreshBackup) {
+  if (fs.existsSync(BACKUP)) console.log('header backup belongs to an older ZCode build; replacing it.');
+  fs.writeFileSync(BACKUP, headerBuf);
+} else if (!fs.existsSync(BACKUP)) {
+  fs.writeFileSync(BACKUP, headerBuf);
+}
 let written = 0;
 while (written < newBuf.length) {
   written += fs.writeSync(fd, newBuf, written, newBuf.length - written, 16 + written);

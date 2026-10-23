@@ -58,7 +58,8 @@ asar 文件布局：
 1. 读头部 JSON，定位 `out/preload/index.cjs`。
 2. 从 `dataBase + offset` 读出原始 preload 字节，把 `badgeSource.toString()` 追加到末尾。
 3. 把新文件写到 `resources/app.asar.unpacked/out/preload/index.cjs`（临时文件 + rename）。
-4. 首次应用时备份原始头部到 `app.asar.header.tps-bak`，然后把新 JSON 写回头部（等长）。
+4. 把当前这份干净头部写到 `app.asar.header.tps-bak`（已存在且属于旧版本时覆盖），
+   然后把新 JSON 写回头部（等长）。
 
 输出会打印 `original size` / `patched size` / `verified: unpacked=true size=... external=...`。
 
@@ -74,7 +75,8 @@ ZCode.exe
                       2. 徽标 IIFE 在 renderer（隔离世界）执行
                            ├─ installTap()：把函数 toString() 包装成 `(…)()` 调用，
                            │  再经 webFrame.executeJavaScript 注入主世界；
-                           │  主世界抓 base service port，每秒轮询 session/debug
+                           │  主世界抓 base service port，轮询 session/debug
+                           │  （活动时每秒、空闲时 10 秒）
                            └─ 监听 DOM，在输入框工具条渲染 #zcode-tps-badge
 ```
 
@@ -90,9 +92,10 @@ ZCode.exe
 
 挂载位置：只插入输入框底部工具条 `[data-composer-trailing-actions]` 的第一个子节点
 （在用量 / 模型选择器左侧）。工具条出现前**不注入**，所以启动时不会先出现在右下角。
-工具条重渲染可能移除注入节点：MutationObserver 发现 `host.isConnected` 为 false 时重新挂载，
-另外每 60 帧检查一次。`ResizeObserver` 观察输入框容器宽度，按 <600 / <480 / <360 三档收缩
-（隐藏圆点 → 隐藏单位 → 缩小字号）。
+工具条重渲染可能移除注入节点：`placeBadge()` 发现 `host.isConnected` 为 false 或
+父节点变了就重新挂载，1 秒检查一次（此前是 60 帧兜底，等于让合成器整窗生命周期都
+保持 60Hz 唤醒）。`ResizeObserver` 观察输入框容器宽度，按 <600 / <480 / <360 三档
+收缩（隐藏圆点 → 隐藏单位 → 缩小字号）。
 悬停统计卡 `#zcode-tps-tip` 挂在 `document.documentElement` 下（避免被页面布局裁切），
 `position:fixed` 按徽标矩形定位，`pointer-events:none`。
 
@@ -104,6 +107,13 @@ ZCode.exe
 `src/patch.mjs` 会从 `app.asar.header.tps-bak` 读回原始 `offset` / `size`，
 重新取出原始 preload，再追加**当前**的徽标代码。因此改完样式直接再 apply 即可，
 不会出现「旧徽标 + 新徽标」叠加。
+
+> **升级后的备份**：ZCode 升级只替换 `app.asar`，不管 `app.asar.header.tps-bak`。
+> 旧备份里的 `offset` 指向上一个版本的布局，留着它会让「重建」读到错位字节、让
+> 「还原」把头部写乱。所以只要读到的目标条目是**未打补丁**状态（说明 `app.asar`
+> 已被替换），apply 就把当前这份干净头部写成新备份，覆盖旧备份时打印
+> `header backup belongs to an older ZCode build`。`restore.mjs` 另有逐条 ownership
+> 校验，跨版本备份会被直接拒绝。判据正本见 [CODE-RULES.md](CODE-RULES.md) 规则 1.6。
 
 ### 还原
 
@@ -142,7 +152,7 @@ String/Object 等前缀 LEB128 varint 长度。
 tap 注入主世界（`webFrame.executeJavaScript`，见 §5 链路），做三件事：
 
 1. 监听窗口消息 `zcode:service-port`，抓住 base 端口（带 `databaseStartupId`）；
-2. 收到宿主 `Initialize(200)` 后，每秒发一次只读请求：
+2. 收到宿主 `Initialize(200)` 后开始只读轮询：活动时每秒一次、空闲时每 10 秒一次：
    `[100, id, "zcode-agent", "readSessionDebug"]` + `[[{workspacePath,
    workspaceIdentity?, sessionId}]]`；
 3. 把 `[201, id]` 的 `rounds` 最后一轮与 `cache` 经 `window.postMessage` 交给徽章。
@@ -154,11 +164,10 @@ tap 注入主世界（`webFrame.executeJavaScript`，见 §5 链路），做三�
 > ——真机上卡启动页，重装 ZCode 才恢复。tap 等到 `[200]` 后才开始轮询，2 秒没等到
 > 则兜底；`windowKind=update-status` 的窗口直接跳过，不碰它的端口。
 
-`workspacePath` / `workspaceIdentity` 的优先级：同一会话的
-`zcode:scoped-service-port` 消息（若该会话有）→ 窗口 URL 的
-`initialWorkspacePath` → tap 在出站请求里嗅到的值。主聊天窗口通常走 URL；远程 /
-侧聊会话走 scoped 元数据或嗅探。`sessionId` 取可见聊天容器的
-`[data-session-id]`（跳过 `draft`）；没有时回退到最近一个 `conversation/<sid>`
+`workspacePath` / `workspaceIdentity` 的优先级：同一会话的 `zcode:scoped-service-port`
+消息（若该会话有）→ 窗口 URL 的 `initialWorkspacePath` → tap 在出站请求里嗅到的值。
+主聊天窗口通常走 URL；远程 / 侧聊会话走 scoped 元数据或嗅探。`sessionId` 取可见聊天
+容器的 `[data-session-id]`（跳过 `draft`）；没有时回退到最近一个 `conversation/<sid>`
 主题。请求同一时间最多一个在途，超时 4 秒、失败退避 5 秒，窗口隐藏时暂停。
 
 `rounds` 由 agent 在 `model_request_completed` 事件上生成，只收
@@ -171,20 +180,21 @@ tokensPerSecond      = outputTokens ÷ (generationDurationMs / 1000)
 
 这正是开发者工具表里的 `TPS (tokens/s)`。思考 tokens 来自 provider 的
 `usage.reasoningTokens`，包含在 `outputTokens` 里；tap 不需要读取任何思考文本。
-
-`networkEntries`（含请求头 / 响应头）、请求消息正文都不转发；跨世界只传最后一轮
-round 与会话 cache 计数。
+响应里的网络日志（含请求头 / 响应头）与消息正文都不转发、也不解析；跨世界只传最后
+一轮 round 与会话 cache 计数。
 
 ### 7.2 事件帧只用于「生成中」
 
-tap 仍然解码 `EventFire`(204) 帧，但只判断两件事：
+`EventFire`(204) 帧**不做 JSON 解析**，直接从载荷字节里读两件事
+（`scanConversationFrame`）：
 
-- `topic` 以 `conversation/` 开头，且 `payload.deltas` 非空 → 任务仍在活动，
-  每 250ms 最多发一次 `{kind:"activity"}`；
-- 记录最近的 `conversation/<sid>`，作为 `sessionId` 的 DOM 回退。
+- 找 `"topic":"conversation/`，取到引号前的会话 id，记作 `sessionId` 的 DOM 回退；
+- 找 `"deltas":`，后面的 `[` 里第一个非空白字节不是 `]` → 任务仍在活动，
+  每 250ms 最多发一次 `{kind:"activity"}`。
 
-不再维护行文本长度基线、CJK 字数或 `COUNTED_PATHS`。任何行增量（正文、思考、
-工具参数、工具输出）都只说明「还在跑」，不产生 token 数。
+这样恢复会话时那一帧整段历史快照（可达数 MB）只被扫一遍字节，不会被 parse。
+形状不认识时（宿主改格式）才回退完整 `JSON.parse`，语义与旧版一致。不再维护行文本
+基线、CJK 字数或 `COUNTED_PATHS`：任何行增量都只说明「还在跑」。
 
 ### 7.3 徽标渲染
 
@@ -207,6 +217,32 @@ zcode-tps-debug 消息
 会超时或收到 `202`，徽标显示「数据源不可用」。这是有意的 fail-closed：
 不把估算值冒充 usage。`tools/ci/test-debug-source.mjs` 用假 MessagePort 固定了
 请求形状、快照转发、活动信号与错误路径；升级 ZCode 后先跑它。
+
+### 7.5 内存与解码预算
+
+tap 挂在渲染进程的主世界里，和 chat 界面共用同一个堆，所以**每条端口消息的开销都
+算在 ZCode 头上**，而 base service port 承载整个工作区的 RPC：会话快照、文件内容、
+工具输出、流式增量都在同一条端口上。以前是「为了读一个字段 parse 整个载荷」：每条
+消息完整解码只为读 `msgType`，每轮轮询再整体 parse 一遍 `{sessionId, rounds,
+<网络日志>, cache}` —— 网络日志最多 100 条、每条含 24 个 512 字符的头加约 2 KB 的
+消息文本，一次用不上。现在按「只解需要的字节」处理：
+
+| 位置 | 以前 | 现在 |
+|---|---|---|
+| 端口消息 | 每条都完整解码 | 只解 head（`[msgType, requestId]`）；不是我们的响应就直接丢，不碰载荷 |
+| `EventFire`(204) | `JSON.parse` 整帧（含恢复会话的历史快照） | 扫字节取 topic 与 `deltas` 是否非空 |
+| 轮询响应 `201` | `JSON.parse` 整个对象 | 顶层成员切片，只 parse `sessionId` / `rounds` / `cache` |
+| 轮询节奏 | 固定 1 秒 | 有活动（最近 5 秒有增量）1 秒，空闲 10 秒 |
+| 重复快照 | 每次都 post 给徽标 | 签名不变就不重发 |
+| 编解码器 | 每条消息 `new TextDecoder()` / `new TextEncoder()` | 窗口级单例，ASCII 模式串缓存 |
+| 徽标心跳 | 常驻 60Hz 帧循环 | 1 秒 `setInterval` |
+| 徽标消息入口 | 页面上所有字符串消息都 `JSON.parse` | 先比固定前缀 `{"src":"zcode-tps-debug"` |
+
+两条兜底：任何切片 / 扫描失败都退回完整解码（优化不得改变语义）；
+`tools/ci/test-debug-source.mjs` 用 1.4 MB 的网络日志夹具断言
+`parsedBytes < 64 KB`、`fallback === 0`，退化会被 CI 拦住。计数器暴露在
+`window.__zcodeTpsTapStats`（`msgs` / `skipped` / `frames` / `picked` / `fallback` /
+`parsedBytes`），只记计数不存载荷；机制与症状见 [CODE-RULES.md](CODE-RULES.md) 规则 2.12。
 
 ## 8. 主题继承
 
