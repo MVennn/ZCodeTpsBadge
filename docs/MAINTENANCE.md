@@ -91,3 +91,4 @@ npm run check
 | 日期 | 做了什么 | 结果 |
 |---|---|---|
 | 2026-10-22 | 收尾大扫除：删除 `.tmp/` 与 `tools/preview/site/`；对齐 0.3.0 文档漂移；Release 说明补「反馈入口」规则 | 仓库 30M → 1.9M；`npm run check` 全绿 |
+| 2026-10-23 | 收尾大扫除：按 §3 口径逐项核磁盘产物（`tools/preview/site/`、`*.tmp-*`、日志、`node_modules/`、`__pycache__` 在本仓**均不存在**，上一轮已清干净）；补 3 条漏登记的纯文档改动到 `CHANGELOG.md` 新增的 `[未发布]` 段 | 无文件删除；`npm run check` 全绿（`tools/ci/check.mjs`：11 个 .mjs / 33 必需文件 / 159 链接 / 13 篇 docs / 资源尺寸 / 源码守卫 / 7 份 release notes / 隐私无本机路径）。红线四项全部在位；`resources/` 两个 asar 相关文件本仓磁盘上没有（在 ZCode 安装目录），按 §3 仍判红线 |
