@@ -105,7 +105,14 @@ for (const file of files.filter((entry) => entry.endsWith('.md'))) {
     const [filePart, anchor] = target.split('#');
     if (!filePart) continue;
 
-    const resolved = path.resolve(path.dirname(file), decodeURIComponent(filePart));
+    let decoded;
+    try {
+      decoded = decodeURIComponent(filePart);
+    } catch {
+      fail('link', `${rel(file)} -> ${target} (bad % escape)`);
+      continue;
+    }
+    const resolved = path.resolve(path.dirname(file), decoded);
     linkCount++;
 
     if (!fs.existsSync(resolved)) {

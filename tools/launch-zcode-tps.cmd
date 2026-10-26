@@ -24,6 +24,9 @@ if not errorlevel 1 (
   exit /b 1
 )
 
-start "" /min node "%ROOT%injector.mjs" 9222
+set "NODE=C:\Program Files\nodejs\node.exe"
+if not exist "%NODE%" set "NODE=node"
+
+start "" /min "%NODE%" "%ROOT%injector.mjs" 9222
 start "" "%ZCODE_EXE%" --remote-debugging-port=9222
 endlocal

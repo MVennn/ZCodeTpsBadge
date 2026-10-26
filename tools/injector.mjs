@@ -5,10 +5,20 @@
 // The badge is injected into the main renderer page (out/renderer/index.html).
 
 import { badgeSource } from '../src/badge-source.mjs';
+import { eventSource } from '../src/event-source.mjs';
 
 const PORT = Number(process.argv[2] || 9222);
 const BASE = `http://127.0.0.1:${PORT}`;
-const BADGE = `(${badgeSource.toString()})();`;
+// CDP evaluates this in the page's main world, so the debug tap must be
+// installed right here: badge-source's installTap() needs require('electron'),
+// which does not exist in a page injected over CDP. patch.mjs binds
+// __tpsEventTapSource for the preload path; this fallback has to do both.
+const BADGE = `(${eventSource.toString()})();\n(${badgeSource.toString()})();`;
+
+if (typeof WebSocket === 'undefined') {
+  console.error('Node 22+ is required (global WebSocket is missing).');
+  process.exit(2);
+}
 
 const attached = new Map();
 
@@ -47,13 +57,22 @@ async function main() {
     try {
       const targets = await listTargets();
       everUp = true;
-      misses = 0;
       for (const t of targets) {
         if (t.type === 'page' && /index\.html/i.test(t.url || '')) attach(t);
       }
-    } catch {
-      if (everUp && ++misses >= 6) process.exit(0);
-      if (!everUp && Date.now() - startedAt > 120000) process.exit(0);
+      // Only reset after attach() succeeded too: a persistent attach error
+      // (e.g. no global WebSocket) must still reach the miss limit instead of
+      // being cleared by every successful /json/list.
+      misses = 0;
+    } catch (e) {
+      if (everUp && ++misses >= 6) {
+        console.error('CDP attach failed repeatedly:', e && e.message ? e.message : e);
+        process.exit(1);
+      }
+      if (!everUp && Date.now() - startedAt > 300000) {
+        console.error('ZCode did not expose the debugging port within 5 minutes.');
+        process.exit(0);
+      }
     }
     await new Promise((r) => setTimeout(r, 1500));
   }

@@ -596,7 +596,16 @@ export function eventSource() {
     if (now - lastPollAt < gap) return;
 
     const sessionId = visibleSessionId();
-    if (!sessionId) return;
+    if (!sessionId) {
+      // Heartbeat so the badge can tell "tap alive, no session yet" apart
+      // from "tap never installed" (it shows a data-source error only for
+      // the latter).
+      if (now - lastIdleAt > 5000) {
+        lastIdleAt = now;
+        send({ src: POST, kind: 'idle' });
+      }
+      return;
+    }
     const path = workspacePath(sessionId);
     if (!path) return;
 
@@ -626,6 +635,7 @@ export function eventSource() {
 
   // --- conversation activity -------------------------------------------
   let lastActivityAt = 0;
+  let lastIdleAt = 0;
 
   function emitActivity() {
     const now = performance.now();
@@ -673,8 +683,12 @@ export function eventSource() {
       if (topic.indexOf('conversation/') !== 0) return;
       const payload = frame.payload;
       const deltas = payload && typeof payload === 'object' ? payload.deltas : null;
-      if (!Array.isArray(deltas) || deltas.length === 0) return;
-      scanned = { sid: topic.slice('conversation/'.length), active: true };
+      // Record the session id even without deltas, exactly like the fast path;
+      // activity still requires a non-empty array.
+      scanned = {
+        sid: topic.slice('conversation/'.length),
+        active: Array.isArray(deltas) && deltas.length > 0,
+      };
     }
     if (scanned.sid) window.__zcodeTpsSessionId = scanned.sid;
     if (scanned.active) emitActivity();

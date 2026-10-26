@@ -4,7 +4,31 @@
 
 ---
 
-## [未发布]
+## [0.3.2] — 2026-10-26
+
+### 全仓审查修复（2026-10-26）
+
+- 修复 CDP 备用模式的徽章永远显示「—」 —— 症状：按 README 用
+  `tools/launch-zcode-tps.cmd`（不改 app.asar）时，徽标 12 秒后提示「数据源不可用」。
+  根因：injector 只注入了 `badgeSource`，而 0.3.0 起数据唯一来源是主世界事件 tap；
+  tap 的安装依赖 preload 才有的 `__tpsEventTapSource` 或 `require('electron')`，
+  CDP 注入的主世界两条都没有。改法：injector 同时注入 `eventSource` 并在主世界直接执行。
+  验证：`node --check` + CI check；真机需退出 ZCode 后重新 apply（未验证）
+- 修复 injector 的静默死循环 —— 症状：Node 20 下注入器窗口一直空转、徽章不出现、无报错。
+  根因：`attach()` 抛错时被外层 `catch` 当作一次 miss，但下一轮 `listTargets()` 成功又把
+  `misses` 清零，`misses >= 6` 永远达不到。改法：成功处理完所有 target 后才清零；
+  持续失败打印错误并以非零码退出；启动时检测全局 `WebSocket`（Node 22+）。
+- 修复 新窗口误报「数据源不可用」 —— 症状：刚开窗口、还没发起会话时，悬停徽标提示数据源故障。
+  根因：12 秒没收到快照就报错，而「没有会话」时 tap 本来就不发快照。改法：tap 每 5 秒发
+  `idle` 心跳，徽标区分「tap 活着但无会话」与「tap 没装上」。
+- 修复 帧分类两条路径不一致 —— 快路径对空 `deltas` 也记录 sessionId，回退路径提前
+  return 不记录；统一为「sid 总是记录、activity 只由非空 deltas 触发」。
+- 修复 预览/检查工具对畸形 URL 崩溃 —— `decodeURIComponent` 未捕获，一条 `%ZZ` 就能
+  打死预览服务器或让 CI 检查以堆栈结束；改为回 400 / 记为链接问题。
+- 修复 启动器 node 解析 —— `launch-zcode-tps.cmd` 先探测 `C:\Program Files\nodejs\node.exe`
+  再回退 PATH，与 apply/restore 口径一致。
+- 验证 —— `node --check` 11 个 mjs ✓、`tools/ci/check.mjs` 全绿；注入内容有变，
+  需完全退出 ZCode 后重新 `tools/apply.cmd`（本次未在真机执行）
 
 ### 文档正本与守卫规则（2026-10-24）
 

@@ -22,7 +22,14 @@ if (!fs.existsSync(root)) {
 }
 
 http.createServer((req, res) => {
-  const rel = decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/+/, '');
+  let rel;
+  try {
+    rel = decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/+/, '');
+  } catch {
+    // A malformed % escape must not take the whole preview server down.
+    res.writeHead(400).end('bad request');
+    return;
+  }
   const file = path.resolve(path.join(root, rel === '' ? 'index.html' : rel));
   if (file !== root && !file.startsWith(root + path.sep)) {
     res.writeHead(403).end('forbidden');

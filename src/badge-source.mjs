@@ -210,6 +210,9 @@ export function badgeSource() {
     let generating = false;
     let error = '';
     let gotSnapshot = false;
+    // Set by any message from the tap (snapshot/activity/idle): distinguishes
+    // "tap alive, no conversation yet" from "tap never installed".
+    let tapAlive = false;
 
     function fmtSpeed(n) {
       if (typeof n !== 'number' || !isFinite(n) || n < 0) return '\u2014';
@@ -285,6 +288,12 @@ export function badgeSource() {
         try { d = JSON.parse(d); } catch { return; }
       }
       if (!d || d.src !== 'zcode-tps-debug') return;
+      tapAlive = true;
+
+      if (d.kind === 'idle') {
+        // The tap is installed but there is no conversation in this window yet.
+        return;
+      }
 
       if (d.kind === 'activity') {
         lastActivityAt = performance.now();
@@ -332,6 +341,7 @@ export function badgeSource() {
     // hover instead of showing a silent dash forever.
     setTimeout(() => {
       if (!gotSnapshot && !error) {
+        if (tapAlive) return;  // tap works; the user just has no session open
         error = '\u672a\u6536\u5230\u8c03\u8bd5\u6570\u636e';
         try { console.warn('[zcode-tps] no session/debug snapshot after 12s'); } catch {}
         updateBadge();
