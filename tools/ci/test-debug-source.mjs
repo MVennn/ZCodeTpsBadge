@@ -9,7 +9,7 @@ import vm from 'node:vm';
 import { eventSource } from '../../src/event-source.mjs';
 
 const SESSION = 'sess-1';
-const WORKSPACE = 'F:\\Project\\ZcodeAIModels';
+const WORKSPACE = 'D:\\Workspaces\\demo-project';  // arbitrary opaque path; real value comes from a live session
 
 // --- same marshalling as the ZCode bundles -------------------------------
 function writeVarint(out, value) {
