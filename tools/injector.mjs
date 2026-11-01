@@ -60,9 +60,11 @@ async function main() {
       for (const t of targets) {
         if (t.type === 'page' && /index\.html/i.test(t.url || '')) attach(t);
       }
-      // Only reset after attach() succeeded too: a persistent attach error
-      // (e.g. no global WebSocket) must still reach the miss limit instead of
-      // being cleared by every successful /json/list.
+      // Reset only when the attach loop threw nothing synchronously: a sync
+      // failure (bad target URL, missing WebSocket global) lands in the catch
+      // below and keeps counting toward the miss limit. A WebSocket that dies
+      // asynchronously is not counted on purpose: /json/list succeeded, so
+      // ZCode is alive and the next pass simply retries the attach.
       misses = 0;
     } catch (e) {
       if (everUp && ++misses >= 6) {

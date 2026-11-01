@@ -4,6 +4,16 @@
 
 ---
 
+## [未发布]
+
+- 加固 补丁头部备份的落盘方式 —— 症状：apply 在写 `app.asar.header.tps-bak`
+  中途被杀（断电 / 结束进程）后，备份只剩半截，重建报
+  「Could not parse header backup」、还原拒绝继续，只能重装 ZCode。
+  根因：外部 preload 早已「临时文件 + rename」原子落盘（CODE-RULES 规则 1.4），
+  备份却还是直接 `writeFileSync`。改法：两者统一走同一个原子写 helper。
+  验证：`npm run check` 全绿（含 RPC 形状测试）；apply 未在真机重跑，
+  需要时按 BUILD.md 正常执行即可
+
 ## [0.3.2] — 2026-10-26
 
 ### 全仓审查修复（2026-10-26）

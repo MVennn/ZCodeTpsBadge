@@ -54,6 +54,14 @@ function fail(msg, code = 1) {
   process.exit(code);
 }
 
+// 临时文件 + rename：中途被杀也不会留下半截的外部 preload 或头部备份
+// （备份是重建与还原定位原始字节的唯一依据，写残 = 只能重装 ZCode）。
+function writeAtomic(file, data) {
+  const tmp = file + '.tmp-' + process.pid;
+  fs.writeFileSync(tmp, data);
+  fs.renameSync(tmp, file);
+}
+
 function zcodeRunning() {
   try {
     const out = execFileSync('tasklist', [
@@ -200,14 +208,12 @@ if (!APPLY) {
 
 fs.mkdirSync(path.dirname(path.join(UNPACKED, TARGET)), { recursive: true });
 const external = path.join(UNPACKED, TARGET);
-const tmpExternal = external + '.tmp-' + process.pid;
-fs.writeFileSync(tmpExternal, patched);
-fs.renameSync(tmpExternal, external);
+writeAtomic(external, patched);
 if (refreshBackup) {
   if (fs.existsSync(BACKUP)) console.log('header backup belongs to an older ZCode build; replacing it.');
-  fs.writeFileSync(BACKUP, headerBuf);
+  writeAtomic(BACKUP, headerBuf);
 } else if (!fs.existsSync(BACKUP)) {
-  fs.writeFileSync(BACKUP, headerBuf);
+  writeAtomic(BACKUP, headerBuf);
 }
 let written = 0;
 while (written < newBuf.length) {
