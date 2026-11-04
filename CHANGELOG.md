@@ -11,6 +11,11 @@
 - `docs/CODE-RULES.md` 的推送前门禁改为 `node tools/ci/check.mjs`（本仓没有
   `tools/check-secrets.py`，隐私扫描内嵌在 check.mjs §8），CI 步骤描述同步订正
 
+### P3 清理（2026-11-04 审查遗留项）
+
+- `src/patch.mjs`：`writeAtomic` 与 asar 头部写入加异常兜底 —— 目标被占用（ZCode
+  未退出）时清理临时文件并给出明确指引，不再裸堆栈退出、也不在安装目录残留 tmp
+
 ## [0.3.3] — 2026-11-01
 
 - 加固 补丁头部备份的落盘方式 —— 症状：apply 在写 `app.asar.header.tps-bak`

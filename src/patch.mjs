@@ -58,8 +58,13 @@ function fail(msg, code = 1) {
 // （备份是重建与还原定位原始字节的唯一依据，写残 = 只能重装 ZCode）。
 function writeAtomic(file, data) {
   const tmp = file + '.tmp-' + process.pid;
-  fs.writeFileSync(tmp, data);
-  fs.renameSync(tmp, file);
+  try {
+    fs.writeFileSync(tmp, data);
+    fs.renameSync(tmp, file);
+  } catch (err) {
+    try { fs.unlinkSync(tmp); } catch (_) {}
+    fail('写入失败（目标可能被占用 —— 先完全退出 ZCode 再试）: ' + file + '\n' + err.message);
+  }
 }
 
 function zcodeRunning() {
@@ -215,12 +220,18 @@ if (refreshBackup) {
 } else if (!fs.existsSync(BACKUP)) {
   writeAtomic(BACKUP, headerBuf);
 }
-let written = 0;
-while (written < newBuf.length) {
-  written += fs.writeSync(fd, newBuf, written, newBuf.length - written, 16 + written);
+try {
+  let written = 0;
+  while (written < newBuf.length) {
+    written += fs.writeSync(fd, newBuf, written, newBuf.length - written, 16 + written);
+  }
+  fs.fsyncSync(fd);
+} catch (err) {
+  fail('写入 asar 头部失败（ZCode 是否仍在运行？）: ' + err.message +
+       '\n若头部已部分写入，用 npm run restore 或按 README 的重装指引恢复。');
+} finally {
+  fs.closeSync(fd);
 }
-fs.fsyncSync(fd);
-fs.closeSync(fd);
 
 const vfd = fs.openSync(ASAR, 'r');
 const v = readHeader(vfd);
