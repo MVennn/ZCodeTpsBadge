@@ -173,3 +173,17 @@ node src/patch.mjs
 | 当前会话没有完成的主轮请求 | 开发者工具「Token 调试」也会是空的；发一条并等请求完成 |
 | 最近一轮被判定异常 | 面板该轮生成时长过短或 TPS 超过 2000；徽标只把它挡在统计外，属预期 |
 | 刚启动还没拿到快照 | 正常；tap 等 `Initialize(200)` 后开始轮询，最多 2 秒兜底 |
+
+## 10. 门禁脚本用 `✓` / `✗` 打结论，GBK 控制台下把自己判成失败 【通用】
+
+- **现象**：Windows 中文控制台（cp936）跑 `python -I tools/check-docs.py`，最后一行
+  `print(f"✓ …")` 抛 `UnicodeEncodeError: 'gbk' codec can't encode character '\u2713'`，
+  脚本以**退出码 1** 结束 —— 检查其实全过，门禁却报红。CI 是 UTF-8，看不到，能长期潜伏。
+- **根因**：`✓` U+2713 / `✗` U+2717 / `⚠` U+26A0 不在 cp936 码表，`sys.stdout` 在这个环境里
+  就是 `gbk`；`python -I` 会把 `PYTHONIOENCODING` / `PYTHONUTF8` 一起忽略，所以「设个环境变量」
+  不是解法 —— 必须改脚本。
+- **解法**：结论行只用 ASCII（`[OK]` / `[FAIL]` / `[!]`）；入口再加
+  `if hasattr(sys.stdout, "reconfigure"): sys.stdout.reconfigure(errors="replace")`，
+  非 GBK 字符降级成 `?` 而不是抛异常。同一问题首次记录见 ZcodeAIModels 仓「踩坑总汇」第 36 节（跨仓引用，非本仓路径）。
+- **验证**：`python -I tools/check-docs.py` → `[OK] …`、退出码 0；反证：把 `✓` 改回原样，
+  同一命令退出码 1 并抛 `UnicodeEncodeError`。

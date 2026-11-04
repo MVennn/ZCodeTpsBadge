@@ -19,13 +19,16 @@ import os
 import subprocess
 import sys
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(errors="replace")
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TARGET = os.path.join(ROOT, "tools", "make_social_preview.py")
 
 
 def main():
     if not os.path.exists(TARGET):
-        print("✗ 找不到 %s" % TARGET)
+        print("[FAIL] 找不到 %s" % TARGET)
         return 1
     cmd = [sys.executable, TARGET, "--ico"]
     print("→", " ".join(cmd))
