@@ -4,6 +4,13 @@
 
 ---
 
+## [未发布]
+
+### 推送前脱敏口径对齐（2026-11-04）
+
+- `docs/CODE-RULES.md` 的推送前门禁改为 `node tools/ci/check.mjs`（本仓没有
+  `tools/check-secrets.py`，隐私扫描内嵌在 check.mjs §8），CI 步骤描述同步订正
+
 ## [0.3.3] — 2026-11-01
 
 - 加固 补丁头部备份的落盘方式 —— 症状：apply 在写 `app.asar.header.tps-bak`

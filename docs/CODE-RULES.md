@@ -223,8 +223,9 @@ apply 默认拒绝在 ZCode 运行时写入；`--force` 是显式选择，且只
 
 # 推送前脱敏规则（通用）
 
-> **一句话**：推送前跑一次 `python tools/check-secrets.py`；它拦的是三类东西 ——
-> 可用凭据、本机用户目录、真实邮箱。规则对 8 个仓完全一致，一处改全局同步。
+> **一句话**：推送前跑一次 `node tools/ci/check.mjs`；它拦的是三类东西 ——
+> 可用凭据、本机用户目录、真实邮箱。本仓不维护独立的 `tools/check-secrets.py`，
+> 隐私扫描内嵌在 `tools/ci/check.mjs` §8（系列其他仓用 check-secrets.py 副本，规则口径一致）。
 
 ---
 
@@ -299,18 +300,15 @@ apply 默认拒绝在 ZCode 运行时写入；`--force` 是显式选择，且只
 ## 5. 推送前怎么做
 
 ```sh
-# 1) 扫已跟踪文件（CI 跑的就是这个，退出码 0 才能推）
-python tools/check-secrets.py
-
-# 2) 扫工作树，含未跟踪文件（提交前自查用）
-python tools/check-secrets.py --all
+# 扫已跟踪文件（CI 跑的就是这个，退出码 0 才能推）
+node tools/ci/check.mjs
 ```
 
-`--all` 模式**遵循 `.gitignore`** —— 本机配置（如 `config.local.json`）设计上
-就不入库，报出来只是噪音。但它仍会扫**未跟踪且未被忽略**的新文件，所以能抓住
-「新建了个文件忘了加 .gitignore」这种情况。
+隐私扫描（个人路径 / 明显凭据）内嵌在 `tools/ci/check.mjs` §8，与 CI 同一实现 ——
+本地跑一遍即等于 CI 预检，本仓没有单独的 `--all` 模式。
 
-**CI 里有「敏感信息扫描」步骤**，推上去会自动跑。本地先跑一遍，别等 CI 报错。
+**CI 的 `Repository checks` 步骤会跑 `node tools/ci/check.mjs`**（隐私扫描在内），
+推上去会自动跑。本地先跑一遍，别等 CI 报错。
 
 ---
 
