@@ -89,7 +89,7 @@ python tools/make_social_preview.py --ico            # 额外写 icon.ico
 python tools/make_social_preview.py --preview-only  # 只写 social-preview.png
 ```
 
-需要 Pillow 与 numpy。视觉语言对齐 GoldSunEnhance 的 `assets/social-preview.png`。
+需要 Pillow 与 numpy。视觉语言对齐 GSAuxiliary 的 `assets/social-preview.png`。
 品牌色与规格见 [docs/REPO-STANDARD.md](../docs/REPO-STANDARD.md) §4。
 
 ## gen_assets.py

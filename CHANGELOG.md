@@ -449,7 +449,7 @@ ChannelClient 停在 Uninitialized，启动页一直等服务初始化。
 
 ### 变更
 
-- 重组项目结构：迁入 `F:\Project\ZCodeTpsBadge`，源码归入 `src/`、入口归入 `tools/`、文档归入 `docs/`。
+- 重组项目结构：迁入本仓根，源码归入 `src/`、入口归入 `tools/`、文档归入 `docs/`。
 - 脚本不再写死项目目录（入口用 `%~dp0` / `import.meta.url`）；ZCode 安装路径支持
   `ZCODE_RESOURCES` / `ZCODE_EXE` 环境变量覆盖。
 - 补丁脚本支持在已打补丁时**重建**外部 preload：改完 `src/badge-source.mjs` 直接再跑一次即可，
@@ -461,7 +461,7 @@ ChannelClient 停在 Uninitialized，启动页一直等服务初始化。
   的第一个子节点，位于用量 / 模型选择器左侧；窗口缩放时随工具条重排并三档收缩
   （<600 隐藏圆点、<480 隐藏单位、<360 缩小字号），不再压住右侧滚动条。
   工具条重渲染后会自动重新挂载；工具条出现前不注入。
-- 仓库规范化（对齐 GoldSunEnhance）：
+- 仓库规范化（对齐 GSAuxiliary）：
   - README 重写为居中 logo + 徽章 + 固定章节；
   - 新增 `assets/icon.svg`、`logo.png`、`icon.ico`、`social-preview.png`、效果截图；
     品牌色改为 `#2B3242 → #161A22` 与 `#FFC24A → #FF7A00`；

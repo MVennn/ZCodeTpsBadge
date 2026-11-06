@@ -1,7 +1,7 @@
 # 仓库规范
 
 > **一句话**：这个仓库长什么样、README 怎么写、assets / docs / tools 怎么放 ——
-> 新增或调整结构前先对照本篇；参照实现是 GoldSunEnhance。
+> 新增或调整结构前先对照本篇；参照实现是 GSAuxiliary。
 
 本篇是仓库结构与外观的**单一正本**。技术机制、视觉、编码、排错分别见
 [ARCHITECTURE.md](ARCHITECTURE.md)、[DESIGN.md](DESIGN.md)、
@@ -11,7 +11,7 @@
 
 ## 1. 参照与差异
 
-沿用 GoldSunEnhance 的骨架：
+沿用 GSAuxiliary 的骨架：
 
 - 居中 logo + 标题 + 一句话 + 徽章的 README；
 - `assets/` 放品牌资源，`docs/` 四类索引，`tools/` 放开发期工具；
@@ -102,7 +102,7 @@ ZCodeTpsBadge/
 | `icon.ico` | 16 / 24 / 32 / 48 / 64 / 128 / 256 | Windows 图标 |
 | `social-preview.png` | 1280×640 | GitHub 社交预览 |
 
-品牌色对齐 GoldSunEnhance：
+品牌色对齐 GSAuxiliary：
 
 | 用途 | 值 |
 |---|---|
