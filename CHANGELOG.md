@@ -4,6 +4,18 @@
 
 ---
 
+## [0.3.5] — 2026-11-12
+
+### 排障篇示例命令来源与旧仓名订正（2026-11-12）
+
+- 调整 `docs/TROUBLESHOOTING.md` 的 GBK 控制台门禁条目 —— 注明示例命令取自 ModelBus 仓的
+  `tools/check-docs.py`，本仓等价门禁是 `node tools/ci/check.mjs`（见 [CODE-RULES.md](docs/CODE-RULES.md)）。
+- 调整 `docs/TROUBLESHOOTING.md` 的跨仓引用 —— 旧仓名 `ZcodeAIModels` 改为 `ModelBus`。
+- 修订 文档正本口径批次（`e0edfc1`）—— `CHANGELOG.md` 删掉本机绝对路径与旧仓名；
+  `docs/MAINTENANCE.md` 里写死的 release notes 份数改为形状检查口径；
+  `docs/DOC-RULES.md` / `docs/REPO-STANDARD.md` / `tools/README.md` 的参照实现统一为 `GSAuxiliary`。
+- 验证：`node tools/ci/check.mjs` 退出码 0（11 个 .mjs 语法 / 33 必需文件 / 162 链接 / 13 篇 docs / 资源尺寸 / 源码守卫 / 10 份 Release 说明形状 / 隐私扫描全通过）。
+
 ## [0.3.4] — 2026-11-06
 
 ### 门禁脚本 GBK 控制台自毁修复（2026-11-04）
